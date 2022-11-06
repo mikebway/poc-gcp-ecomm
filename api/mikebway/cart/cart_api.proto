@@ -1,0 +1,132 @@
+syntax = "proto3";
+
+package cart;
+
+import "mikebway/cart/cart.proto";
+import "mikebway/types/address.proto";
+import "mikebway/types/person.proto";
+
+option go_package = "github.com/mikebway/poc-gcp-ecomm/pb/cart";
+
+// All of the API methods for the shopping cart service are declared here
+service CartAPI {
+
+    // Create a new shopping cart
+    rpc CreateShoppingCart(CreateShoppingCartRequest) returns (CreateShoppingCartResponse) {};
+
+    // Retrieve a cart by UUID ID
+    rpc GetShoppingCartByID(GetShoppingCartByIDRequest) returns (GetShoppingCartByIDResponse) {};
+
+    // Add an item to a cart
+    rpc AddItemToShoppingCart(AddItemToShoppingCartRequest) returns (AddItemToShoppingCartResponse) {};
+
+    // Remove an item from the cart
+    rpc RemoveItemFromShoppingCart(RemoveItemFromShoppingCartRequest) returns (RemoveItemFromShoppingCartResponse) {};
+
+    // Set the delivery address for physical cart items
+    rpc SetDeliveryAddress(SetDeliveryAddressRequest) returns (SetDeliveryAddressResponse) {};
+
+    // Submit the order / checkout the shopping cart
+    rpc CheckoutShoppingCart(CheckoutShoppingCartRequest) returns (CheckoutShoppingCartResponse) {};
+
+    // Explicitly abandon a shopping cart in response to a user request.
+    rpc AbandonShoppingCart(AbandonShoppingCartRequest) returns (AbandonShoppingCartResponse) {};
+}
+
+// Request parameters for the CreateShoppingCart API
+message CreateShoppingCartRequest {
+
+    // The person / user requesting to open a new shopping cart
+    mikebway.types.Person shopper = 1;
+}
+
+// Response parameters for the CreateShoppingCart API
+message CreateShoppingCartResponse {
+
+    // The empty cart requested
+    ShoppingCart cart = 1;
+}
+
+// Request parameters for the GetShoppingCartByID API
+message GetShoppingCartByIDRequest {
+    string cart_id = 1;
+}
+
+// Response parameters for the GetShoppingCartByID API.
+//
+// The cart field shall be missing / empty if no match was wound for the given ID.
+message GetShoppingCartByIDResponse {
+    ShoppingCart cart = 1;
+}
+
+// Request parameters for the AddItemToShoppingCart API
+message AddItemToShoppingCartRequest {
+
+    // The ID of the cart that the item should be added too
+    string cart_id = 1;
+
+    // The item to be added to the shopping cart
+    CartItem item = 2;
+}
+
+// Response parameters for the AddItemToShoppingCart API
+message AddItemToShoppingCartResponse {
+
+    // The populated cart requested
+    ShoppingCart cart = 1;
+}
+
+// Request parameters for the RemoveItemFromShoppingCart API
+message RemoveItemFromShoppingCartRequest {
+
+    // The ID of the cart that the item should be removed from
+    string cart_id = 1;
+
+    // The item to be removed from the shopping cart
+   string item_id = 2;
+}
+
+// Response parameters for the RemoveItemFromShoppingCart API
+message RemoveItemFromShoppingCartResponse {
+
+    // The (slightly) depopulated cart
+    ShoppingCart cart = 1;
+}
+
+
+// Request parameters for the SetDeliveryAddress API
+message SetDeliveryAddressRequest {
+
+    // The ID of the cart that the address should be added too
+    string cart_id = 1;
+
+    // The address to be set into the order
+    mikebway.types.PostalAddress delivery_address = 2;
+}
+
+// Response parameters for the SetDeliveryAddress API
+message SetDeliveryAddressResponse {
+
+    // The populated cart requested
+    ShoppingCart cart = 1;
+}
+
+// Request parameters for the CheckoutShoppingCart API
+message CheckoutShoppingCartRequest {
+    string cart_id = 1;
+}
+
+// Response parameters for the CheckoutShoppingCart API.
+message CheckoutShoppingCartResponse {
+    ShoppingCart cart = 1;
+}
+
+// Request parameters for the AbandonShoppingCart API
+message AbandonShoppingCartRequest {
+    string cart_id = 1;
+}
+
+// Response parameters for the AbandonShoppingCart API.
+message AbandonShoppingCartResponse {
+    ShoppingCart cart = 1;
+}

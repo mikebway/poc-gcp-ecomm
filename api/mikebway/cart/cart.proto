@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package cart;
+
+import "google/type/money.proto";
+import "google/type/timestamp.proto";
+import "mikebway/types/address.proto";
+import "mikebway/types/person.proto";
+
+option go_package = "github.com/mikebway/poc-gcp-ecomm/pb/cart";
+
+// A shopping cart collects the cart items that a shopper is considering purchasing
+// or has purchased. A cart should be considered immutable once purchase has been
+// processed.
+//
+// It is persisted in the cart datastore kind.
+message ShoppingCart {
+  // A UUID ID in hexadecimal string form - a unique ID for this cart.
+  // This will be set by the cart service when the cart is first created.
+  string id = 1;
+
+  // The time at which shopping cart was first instantiated
+  google.protobuf.Timestamp creation_time = 2;
+
+  // Optional. The time at which shopping cart was closed, either  as
+  // abandoned or submitted / checked out. See the Status to determine which
+  google.protobuf.Timestamp closed_time = 3;
+
+  // The state of the shopping cart as an enumerated value
+  ShoppingCartStatus status = 4;
+
+  // The person who opened the shopping cart
+  mikebway.types.Person shopper = 5;
+
+  // The delivery address for the order
+  mikebway.types.PostalAddress delivery_address = 6;
+
+  // Cart items is the list of one to many items that make up the potential order
+  repeated CartItem cart_items = 7;
+}
+
+// An enumeration of shopping cart states
+enum ShoppingCartStatus {
+  SCS_UNSPECIFIED = 0;
+  SCS_OPEN = 1;
+  SCS_ORDER_SUBMITTED = 2;
+  SCS_ABANDONED_BY_USER = 3;
+  SCS_ABANDONED_BY_TIMEOUT = 4;
+}
+
+// CartItem represents a single entry in an order. An order will contain one
+// to many order items.
+message CartItem {
+  // A UUID ID in hexadecimal string form - a unique ID for this item.
+  // This will be set by the cart when the item is added to the shopper's cart
+  string id = 1;
+
+  // The UUID ID (as a hexadecimal string) of the shopping cart that this item belongs to
+  string cart_id = 2;
+
+  // Product code is the equivalent of a SKU code identifying the type of
+  // product or service being ordered.
+  string product_code = 3;
+
+  // Quantity is the number of this item type that is being ordered.
+  int32 quantity = 4;
+
+  // The unit price is the price that the customer was shown for a single item
+  // when they selected the item for their cart
+  google.type.Money unit_price = 5;
+}

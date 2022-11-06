@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package mikebway.types;
+
+import "google/type/phone_number.proto";
+
+option go_package = "github.com/mikebway/poc-gcp-ecomm/pb/types";
+
+// Person describes a human individual.
+//
+// See https://developers.google.com/people/api/rest/v1/people#Person.Name as field naming reference.
+message Person {
+  // A UUID ID in hexadecimal string form
+  string id = 1;
+
+  // Optional. In western cultures, the person's last name (e.g. "Broadway")
+  string family_name = 2;
+
+  // Optional. In western cultures, the person's first name (e.g. "Michael")
+  string given_name = 3;
+
+  // Optional. The person's middle name(s), space delimited, if any (e.g. "Dennis Albert")
+  string middle_name = 4;
+
+  // Optional. How the name might be displayed on a web page (e.g. "Mike Broadway")
+  string display_name = 5;
+}
+
+// Contact describes an entity (person, business, institution, etc) that serves as a contact for some purpose.
+message Contact {
+  // A UUID ID in hexadecimal string form
+  string id = 1;
+
+  // Optional. The person if the contact is a specific, individual, human
+  Person person = 2;
+
+  // Optional. The name of the business / institution if the contact is either the business / institution in general
+  // of the person is a representative of the business.
+  string business_name = 3;
+
+  // Optional. The email address for the person or business entity
+  string email = 4;
+
+  // Optional. The phone number of the contact
+  google.type.PhoneNumber phone = 5;
+}
