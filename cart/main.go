@@ -11,10 +11,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// isUnitTesting is set to true when running unit tests. This will override the initialization of the service
-// in small ways, e.g. to use a mock datastore client instead of the real thing.
-var isUnitTesting bool
-
 // unitTestNewCartServiceError should be returned by NewCartService if we are running unit tests
 // and unitTestNewCartServiceError is not nil.
 var unitTestNewCartServiceError error

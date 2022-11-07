@@ -49,7 +49,7 @@ type PostalAddress struct {
 	// is correct. See http://cldr.unicode.org/ and
 	// http://www.unicode.org/cldr/charts/30/supplemental/territory_information.html
 	// for details. Example: "CH" for Switzerland.
-	RegionCode string `datastore:"regionCode,omitempty" json:"regionCode,omitempty"`
+	RegionCode string `firestore:"regionCode,omitempty" json:"regionCode,omitempty"`
 
 	// LanguageCode (Optional) is BCP-47 language code of the contents of this address
 	// (if known). This is often the UI language of the input form or is expected
@@ -63,20 +63,20 @@ type PostalAddress struct {
 	// possibly incorrect default).
 	//
 	// Examples: "zh-Hant", "ja", "ja-Latn", "en".
-	LanguageCode string `datastore:"languageCode,omitempty" json:"languageCode,omitempty"`
+	LanguageCode string `firestore:"languageCode,omitempty" json:"languageCode,omitempty"`
 
 	// PostalCode (Optional) is the postal code of the address. Not all countries use or
 	// require postal codes to be present, but where they are used, they may trigger
 	// additional validation with other parts of the address (e.g. state/zip
 	// validation in the U.S.A.).
-	PostalCode string `datastore:"postalCode,omitempty" json:"postalCode,omitempty"`
+	PostalCode string `firestore:"postalCode,omitempty" json:"postalCode,omitempty"`
 
 	// SortingCode (Optional) is additional, country-specific, sorting code. This is not
 	// used in most regions. Where it is used, the value is either a string like
 	// "CEDEX", optionally followed by a number (e.g. "CEDEX 7"), or just a number
 	// alone, representing the "sector code" (Jamaica), "delivery area indicator"
 	// (Malawi) or "post office indicator" (e.g. Côte d'Ivoire).
-	SortingCode string `datastore:"sortingCode,omitempty" json:"sortingCode,omitempty"`
+	SortingCode string `firestore:"sortingCode,omitempty" json:"sortingCode,omitempty"`
 
 	// AdministrativeArea (Optional) is the highest administrative subdivision which
 	//  is used for postal addresses of a country or region.
@@ -85,17 +85,17 @@ type PostalAddress struct {
 	// community (e.g. "Barcelona" and not "Catalonia").
 	// Many countries don't use an administrative area in postal addresses. E.g.
 	// in Switzerland this should be left unpopulated.
-	AdministrativeArea string `datastore:"administrativeArea,omitempty" json:"administrativeArea,omitempty"`
+	AdministrativeArea string `firestore:"administrativeArea,omitempty" json:"administrativeArea,omitempty"`
 
 	// Locality (Optional) generally refers to the city/town portion of the address.
 	// Examples: US city, IT comune, UK post town.
 	// In regions of the world where localities are not well defined or do not fit
 	// into this structure well, leave locality empty and use address_lines.
-	Locality string `datastore:"locality,omitempty" json:"locality,omitempty"`
+	Locality string `firestore:"locality,omitempty" json:"locality,omitempty"`
 
 	// Sublocality (Optional) is a subdivision of the locality of the address.
 	// For example, this can be neighborhoods, boroughs, districts.
-	Sublocality string `datastore:"sublocality,omitempty" json:"sublocality,omitempty"`
+	Sublocality string `firestore:"sublocality,omitempty" json:"sublocality,omitempty"`
 
 	// AddressLines (Optional) are unstructured address lines describing the lower
 	// levels of an address.
@@ -120,16 +120,16 @@ type PostalAddress struct {
 	// then geocoding is the recommended way to handle completely unstructured
 	// addresses (as opposed to guessing which parts of the address should be
 	// localities or administrative areas).
-	AddressLines []string `datastore:"addressLines,omitempty" json:"addressLines,omitempty"`
+	AddressLines []string `firestore:"addressLines,omitempty" json:"addressLines,omitempty"`
 
 	// Recipients (Optional) are the recipients at the address.
 	// This field may, under certain circumstances, contain multiline information.
 	// For example, it might contain "care of" information.
-	Recipients []string `datastore:"recipients,omitempty" json:"recipients,omitempty"`
+	Recipients []string `firestore:"recipients,omitempty" json:"recipients,omitempty"`
 
 	// Organization (Optional) is the name of the organization (e.g. business) at
 	// the address.
-	Organization string `datastore:"organization,omitempty" json:"organization,omitempty"`
+	Organization string `firestore:"organization,omitempty" json:"organization,omitempty"`
 
 	// MailboxId (Optional) is the identifier of a mailbox at this address. Used in the
 	// case where multiple entities may be registered at the same address, divided
@@ -137,7 +137,7 @@ type PostalAddress struct {
 	//
 	// Some address values might specify the mailbox as an address line but this field
 	// allows for a mailbox to be explicitly labeled in the data.
-	MailboxId string `datastore:"mailboxId,omitempty" json:"mailboxId,omitempty"`
+	MailboxId string `firestore:"mailboxId,omitempty" json:"mailboxId,omitempty"`
 }
 
 // PostalAddressFromPB is a factory method that generates a PostalAddress structure from its Protocol Buffer equivalent

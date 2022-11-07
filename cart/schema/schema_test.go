@@ -66,8 +66,8 @@ func init() {
 	shoppingCartClosedTime = t.GetTime()
 }
 
-// TestDatastoreKeys evaluates each of the DatastoreKey methods in turn.
-func TestDatastoreKeys(t *testing.T) {
+// TestFirestorePaths evaluates each of the Firestore path methods in turn.
+func TestFirestorePaths(t *testing.T) {
 
 	// Avoid having to pass t in to every assertion
 	req := require.New(t)
@@ -75,24 +75,21 @@ func TestDatastoreKeys(t *testing.T) {
 	// Obtain a fully populated shopping cart
 	cart := buildMockCart()
 
-	// Get the datastore key for the shopping cart and confirm that it looks as we expect
-	cartKey := cart.DatastoreKey()
-	req.NotNil(cartKey, "should have obtained a shopping cart datastore key")
-	cartKeyString := cartKey.String()
-	req.Equal("/ShoppingCart,cart:d1cecab3-5bc0-43d4-aef1-99ad69794313", cartKeyString, "cart key content does not match expected value")
+	// Get the firestore path for the shopping cart and confirm that it looks as we expect
+	cartPath := cart.StoreRefPath()
+	req.NotEmpty(cartPath, "should have obtained a shopping cart firestore path")
+	req.Equal("carts/d1cecab3-5bc0-43d4-aef1-99ad69794313", cartPath, "cart path content does not match expected value")
 
-	// Get the datastore key for the delivery address of the shopping cart and confirm that it looks as we expect
-	deliveryAddressKey := DeliveryAddressKey(cart.Id)
-	req.NotNil(deliveryAddressKey, "should have obtained a delivery address datastore key")
-	deliveryAddressKeyString := deliveryAddressKey.String()
-	req.Equal("/ShoppingCart,cart:d1cecab3-5bc0-43d4-aef1-99ad69794313/ShoppingCart,deliveryaddr", deliveryAddressKeyString, "delivery address key content does not match expected value")
+	// Get the firestore path for the delivery address of the shopping cart and confirm that it looks as we expect
+	deliveryAddressPath := DeliveryAddressPath(cart.Id)
+	req.NotEmpty(deliveryAddressPath, "should have obtained a delivery address firestore path")
+	req.Equal("carts/d1cecab3-5bc0-43d4-aef1-99ad69794313/addresses/delivery", deliveryAddressPath, "delivery address path content does not match expected value")
 
-	// Get the datastore key for a cart item and confirm that it looks as we expect
+	// Get the firestore path for a cart item and confirm that it looks as we expect
 	cartItem := buildMockCartItems()[0]
-	cartItemKey := cartItem.DatastoreKey()
-	req.NotNil(cartItemKey, "should have obtained a cart item datastore key")
-	cartItemKeyString := cartItemKey.String()
-	req.Equal("/ShoppingCart,cart:d1cecab3-5bc0-43d4-aef1-99ad69794313/ShoppingCart,cartitem:54f34cb9-fea6-4786-a475-cebd95d93742", cartItemKeyString, "cart item key content does not match expected value")
+	cartItemPath := cartItem.StoreRefPath()
+	req.NotEmpty(cartItemPath, "should have obtained a cart item firestore path")
+	req.Equal("carts/d1cecab3-5bc0-43d4-aef1-99ad69794313/items/54f34cb9-fea6-4786-a475-cebd95d93742", cartItemPath, "cart item path content does not match expected value")
 }
 
 // TestFullConversion examines what happens when a fully populated cart is converted to its

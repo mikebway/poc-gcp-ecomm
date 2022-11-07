@@ -1,7 +1,7 @@
 package main
 
 import (
-	"cloud.google.com/go/datastore"
+	"cloud.google.com/go/firestore"
 	"context"
 	"fmt"
 	"github.com/google/uuid"
@@ -9,16 +9,18 @@ import (
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"time"
 )
 
 // CartService is a structure class with methods that implements the cart.CartAPIServer gRPC API
-// storing the data for the social graph in a Google Cloud Datastore Kind.
+// storing the data for the social graph in a Google Cloud Firestore Kind.
 type CartService struct {
 	pbcart.UnimplementedCartAPIServer
 
-	// dsClient is the GCP Datastore client - it is thread safe and can be reused concurrently
-	dsClient dsinterface.DatastoreClient
+	// fsClient is the GCP Firestore client - it is thread safe and can be reused concurrently
+	fsClient *firestore.Client
 }
 
 // NewCartService is a factory method returning an instance of our social graph service.
@@ -27,29 +29,22 @@ func NewCartService() (*CartService, error) {
 	// Build our service instance here
 	svc := &CartService{}
 
-	// Obtain a datastore client and stuff that in the service instance
+	// Obtain a firestore client and stuff that in the service instance
 	ctx := context.Background()
-	var dsClient dsinterface.DatastoreClient
 	var err error
-	if !isUnitTesting {
-		// Only set the datastore client if we are not unit testing. Unit test will add their own mock
-		// datastore client later if need be. datastore.NewClient will fail if we are not running in
-		// either a real GCP environment or an emulation of one so can't be invoked in a vanilla unit
-		// test context.
-		dsClient, err = datastore.NewClient(ctx, datastore.DetectProjectID)
+	if unitTestNewCartServiceError != nil {
+		// Set the Firestore client if we are not unit testing an error situations.
+		svc.fsClient, err = firestore.NewClient(ctx, firestore.DetectProjectID)
 
 	} else {
-		// We are unit testing - should we report and error to see how our caller handles it?
-		if unitTestNewCartServiceError != nil {
-			return nil, unitTestNewCartServiceError
-		}
+		// We are unit testing and required to report an error
+		err = unitTestNewCartServiceError
 	}
 
-	// Check that we obtained a datastore client successfully
+	// Check that we obtained a firestore client successfully
 	if err != nil {
-		return nil, fmt.Errorf("could not obtain datastore client: %w", err)
+		return nil, fmt.Errorf("could not obtain firestore client: %w", err)
 	}
-	svc.dsClient = dsClient
 
 	// All done - return the populated service instance
 	return svc, nil
@@ -61,8 +56,11 @@ func (cs *CartService) CreateShoppingCart(ctx context.Context, req *pbcart.Creat
 	// Obtain a shortcut handle on our globally configured logger
 	l := zap.L()
 
+	// TODO: Parameter validation
+	// TODO: Access control
+
 	// Create the storable cart structure with a new unique ID
-	storableCart := schema.ShoppingCart{
+	storableCart := &schema.ShoppingCart{
 		Id:           uuid.New().String(),
 		CreationTime: time.Now(),
 		Status:       schema.CsOpen,
@@ -70,14 +68,11 @@ func (cs *CartService) CreateShoppingCart(ctx context.Context, req *pbcart.Creat
 	}
 	l.Info("storing new cart", zap.String("CartId", storableCart.Id))
 
-	// TODO: wrap cart creation in a transaction
-	// TODO: use MultiPut
-
-	// Store the so far empty cart in the datastore
-	cartKey := storableCart.DatastoreKey()
-	_, err := cs.dsClient.Put(ctx, cartKey, &storableCart)
+	// Store the empty new cart in the firestore
+	ref := cs.fsClient.Doc(storableCart.StoreRefPath())
+	_, err := ref.Create(ctx, storableCart)
 	if err != nil {
-		err = fmt.Errorf("failed putting new cart to datastore: %w", err)
+		err = fmt.Errorf("failed creating new cart in Firestore: %w", err)
 		l.Error(err.Error(), zap.String("CartId", storableCart.Id))
 		return nil, err
 	}
@@ -123,36 +118,61 @@ func (cs *CartService) getShoppingCart(ctx context.Context, cartId string) (*pbc
 		Id: cartId,
 	}
 
-	// TODO: wrap cart retrieval in a transaction
-	// TODO: use MultiGet
 	// TODO: Convert cart in one step after populating with shopper and address
-	// TODO: Store shopper directly in cart not as a child entity
 
-	// Ask the datastore client for the specified cart
-	err := cs.dsClient.Get(ctx, storedCart.DatastoreKey(), &storedCart)
+	// Ask the firestore client for the specified cart
+	ref := cs.fsClient.Doc(storedCart.StoreRefPath())
+	snap, err := ref.Get(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve cart with ID %s: %w", cartId, err)
+		return nil, fmt.Errorf("failed to retrieve cart snapshot with ID %s: %w", cartId, err)
 	}
 
-	// Convert the stored cart data to the protocol buffer equivalent
-	pbCart := storedCart.AsPBShoppingCart()
-
-	// Ask the datastore client for the delivery address (if there is one)
-	deliveryAddress := types.PostalAddress{}
-	err = cs.dsClient.Get(ctx, schema.DeliveryAddressKey(cartId), &deliveryAddress)
-	if err == nil {
-
-		// We retrieved a delivery address - set that into the cart
-		pbCart.DeliveryAddress = deliveryAddress.AsPBPostalAddress()
-
-	} else if err != datastore.ErrNoSuchEntity {
-
-		// We experienced a significant error
-		return nil, fmt.Errorf("failed to retrieve delivery address for cart with ID %s: %w", cartId, err)
+	// Unmarshall the snapshot into our internal structure form
+	err = snap.DataTo(storedCart)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal cart snapshot with ID %s: %w", cartId, err)
 	}
+
+	// Get the delivery address if one has been set
+	deliveryAddress, err := cs.getDeliveryAddress(ctx, cartId)
+	if err != nil {
+		return nil, err
+	}
+	storedCart.DeliveryAddress = deliveryAddress
 
 	// All good, log our joy and return the protocol buffer transliteration of our retrieved cart
-	return pbCart, nil
+	return storedCart.AsPBShoppingCart(), nil
+}
+
+// getDeliveryAddress returns the delivery address for the give cart in its package internal structure form
+// or nil if no address was found or an error occurred.
+func (cs *CartService) getDeliveryAddress(ctx context.Context, cartId string) (*types.PostalAddress, error) {
+
+	// Ask the firestore client for the delivery address (if there is one)
+	ref := cs.fsClient.Doc(schema.DeliveryAddressPath(cartId))
+	snap, err := ref.Get(ctx)
+	if err == nil {
+
+		// Unmarshall the snapshot into our internal structure form
+		deliveryAddress := &types.PostalAddress{}
+		err = snap.DataTo(deliveryAddress)
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal delivery addreess snapshot with cart ID %s: %w", cartId, err)
+		}
+
+		// Stuff the delivery address into the parent cart structure
+		return deliveryAddress, nil
+	}
+
+	// We got an error but it might just be that the address was not found, i.e. not really an error
+	if status.Code(err) == codes.NotFound {
+
+		// Return absolutely nothing at all
+		return nil, nil
+	}
+
+	// We experienced a significant error, report that back to the caller
+	return nil, fmt.Errorf("failed to retrieve delivery address for cart with ID %s: %w", cartId, err)
 }
 
 // SetDeliveryAddress adds (or replaces) the delivery address to be used for physical cart items.
@@ -162,14 +182,12 @@ func (cs *CartService) SetDeliveryAddress(ctx context.Context, req *pbcart.SetDe
 	l := zap.L()
 	l.Info("setting delivery address", zap.String("CartId", req.CartId))
 
-	// TODO: Access control?
-
-	// Store the person that requested the cart be created as a child of the cart in the datastore
-	deliveryAddrKey := schema.DeliveryAddressKey(req.CartId)
+	// Store the person that requested the cart be created as a child of the cart in the firestore
 	deliveryAddress := types.PostalAddressFromPB(req.DeliveryAddress)
-	_, err := cs.dsClient.Put(ctx, deliveryAddrKey, deliveryAddress)
+	ref := cs.fsClient.Doc(schema.DeliveryAddressPath(req.CartId))
+	_, err := ref.Create(ctx, deliveryAddress)
 	if err != nil {
-		err = fmt.Errorf("failed putting cart delivery address to datastore: %w", err)
+		err = fmt.Errorf("failed setting delivery address to firestore for cart: %w", err)
 		l.Error(err.Error(), zap.String("CartId", req.CartId))
 		return nil, err
 	}

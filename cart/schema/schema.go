@@ -1,9 +1,8 @@
-// Package schema defines generic type entity structures as they might be stored in a Google Datastore
+// Package schema defines generic type document structures as they might be stored in a Google Firestore
 // or represented in JSON
 package schema
 
 import (
-	"cloud.google.com/go/datastore"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	pbtypes "github.com/mikebway/poc-gcp-ecomm/pb/types"
 	"github.com/mikebway/poc-gcp-ecomm/types"
@@ -12,60 +11,55 @@ import (
 )
 
 const (
-	// Kind names the datastore kind (approximating to a SQL table) under which all of our entities are stored
-	Kind = "ShoppingCart"
+	// CartCollection names the firestore collection under which all of our documents are stored
+	CartCollection = "carts/"
 
-	// KeyPrefixCart is combined with a shopping cart's UUID ID to form the datastore key name for their profile
-	KeyPrefixCart = "cart:"
+	// ItemCollection names the sub-collection of an individual cart in which shopping cart item documents are stored
+	ItemCollection = "/items/"
 
-	// KeyPrefixCartItem is combined with the UUID ID of a shopping cart item to form a datastore key with
-	// the cart key as its parent.
-	KeyPrefixCartItem = "cartitem:"
+	// AddressCollection names the sub-collection of an individual cart in which postal address documents are stored
+	AddressCollection = "/addresses/"
 
-	// KeyShopper is used as the child key value for the one and only person associated with a shopping cart
-	// as the shopper.
-	KeyShopper = "shopper"
-
-	// KeyDeliveryAddress is used as the child key value for the one and only physical delivery address
-	// that may (optionally) be associated with a shopping cart for the delivery of physical purchases (if any).
-	KeyDeliveryAddress = "deliveryaddr"
+	// DeliverAddressDoc names the single delivery address document that may bee associated with the AddressCollection
+	// of a single shopping cart.
+	DeliverAddressDoc = "delivery"
 )
 
 // ShoppingCart collects the cart items that a shopper is considering purchasing
 // or has purchased. A cart should be considered immutable once purchase has been
 // processed.
 //
-// It is persisted in the cart datastore kind.
+// It is persisted in the cart firestore collection.
 type ShoppingCart struct {
 	// A UUID ID in hexadecimal string form - a unique ID for this cart.
 	// This will be set by the cart service when the cart is first created.
-	Id string `datastore:"id,noindex" json:"id,omitempty"`
+	Id string `firestore:"id" json:"id,omitempty"`
 
 	// CreationTime is the time at which the cart was created
-	CreationTime time.Time `datastore:"creationTime" json:"creationTime"`
+	CreationTime time.Time `firestore:"creationTime" json:"creationTime"`
 
 	// ClosedTime (Optional) is the time at which shopping cart was closed, either
 	// as abandoned or submitted / checked out.
-	ClosedTime time.Time `datastore:"closedTime,omitempty" json:"closedTime,omitempty"`
+	ClosedTime time.Time `firestore:"closedTime,omitempty" json:"closedTime,omitempty"`
 
 	// Status describes the state of the shopping cart (duh!).
-	Status CartStatus `datastore:"status" json:"status"`
+	Status CartStatus `firestore:"status" json:"status"`
 
 	// Shopper identifies the person who submitted the order
-	Shopper *types.Person `datastore:"shopper" json:"shopper"`
+	Shopper *types.Person `firestore:"shopper" json:"shopper"`
 
 	// DeliveryAddress is the postal address to which any physical items in the order
 	// are to be delivered.
 	//
-	// NOTE: delivery address is stored as a separate entity in the Google Datastore with
-	// the order key as their key ancestor.
-	DeliveryAddress *types.PostalAddress `datastore:"-" json:"deliveryAddress"`
+	// NOTE: delivery address is stored as a separate sub-document in the Google Firestore with
+	// the cart reference as their ancestor.
+	DeliveryAddress *types.PostalAddress `firestore:"-" json:"deliveryAddress"`
 
 	// CartItems  is the list of one to many items that make up the potential order.
 	//
-	// NOTE: cart items are stored as separate entities in the Google Datastore with
-	// the cart key as their key ancestor.
-	CartItems []*ShoppingCartItem `datastore:"-" json:"cartItems"`
+	// NOTE: cart items are stored as separate sub-documents in the Google Firestore with
+	// the cart reference as their ancestor.
+	CartItems []*ShoppingCartItem `firestore:"-" json:"cartItems"`
 }
 
 // CartStatus is an enumeration type defining the overall status of a shopping cart
@@ -79,9 +73,9 @@ const (
 	CsAbandonedByTimeout CartStatus = 4
 )
 
-// DatastoreKey returns the key value for this ShoppingCart.
-func (c *ShoppingCart) DatastoreKey() *datastore.Key {
-	return datastore.NameKey(Kind, KeyPrefixCart+c.Id, nil)
+// StoreRefPath returns the string representation of the document reference path for this ShoppingCart.
+func (c *ShoppingCart) StoreRefPath() string {
+	return CartCollection + c.Id
 }
 
 // AsPBShoppingCart returns the protocol buffer representation of this cart.
@@ -181,21 +175,21 @@ func ShoppingCartFromPB(pbc *pbcart.ShoppingCart) *ShoppingCart {
 // to many order items.
 type ShoppingCartItem struct {
 	// Id is a UUID ID in hexadecimal string form - a unique ID for this cart item.
-	Id string `datastore:"id,noindex" json:"id,omitempty"`
+	Id string `firestore:"id" json:"id,omitempty"`
 
 	// CartId is a UUID ID in hexadecimal string form - a unique ID for  this item's parent cart
-	CartId string `datastore:"cartId,noindex" json:"cartId,omitempty"`
+	CartId string `firestore:"cartId" json:"cartId,omitempty"`
 
 	// ProductCode is the equivalent of a SKU code identifying the type of
 	// product or service being ordered.
-	ProductCode string `datastore:"productCode" json:"productCode"`
+	ProductCode string `firestore:"productCode" json:"productCode"`
 
 	// Quantity is the number of this item type that is being ordered.
-	Quantity int32 `datastore:"quantity" json:"quantity"`
+	Quantity int32 `firestore:"quantity" json:"quantity"`
 
 	// UnitPrice is the price that the customer was shown for a single item
 	// when they selected the item for their cart
-	UnitPrice *types.Money `datastore:"unitPrice" json:"unitPrice"`
+	UnitPrice *types.Money `firestore:"unitPrice" json:"unitPrice"`
 }
 
 // AsPBCartItem returns the protocol buffer representation of this cart item.
@@ -221,15 +215,13 @@ func ShoppingCartItemFromPB(pbItem *pbcart.CartItem) *ShoppingCartItem {
 	}
 }
 
-// DatastoreKey returns the key value for this ShoppingCartItem.
-func (item *ShoppingCartItem) DatastoreKey() *datastore.Key {
-	return datastore.NameKey(Kind, KeyPrefixCartItem+item.Id,
-		datastore.NameKey(Kind, KeyPrefixCart+item.CartId, nil))
+// StoreRefPath returns the string representation of the document reference path for this ShoppingCartItem.
+func (item *ShoppingCartItem) StoreRefPath() string {
+	return CartCollection + item.CartId + ItemCollection + item.Id
 }
 
-// DeliveryAddressKey builds a datastore key to retrieve the description of the delivery address, if any, associated
-// with a shopping cart.
-func DeliveryAddressKey(cartId string) *datastore.Key {
-	parentKey := datastore.NameKey(Kind, KeyPrefixCart+cartId, nil)
-	return datastore.NameKey(Kind, KeyDeliveryAddress, parentKey)
+// DeliveryAddressPath returns the string representation of the document reference path for the one and only
+// delivery address, if any, associated with a shopping cart.
+func DeliveryAddressPath(cartId string) string {
+	return CartCollection + cartId + AddressCollection + DeliverAddressDoc
 }

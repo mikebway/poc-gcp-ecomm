@@ -34,11 +34,11 @@ import (
 type Money struct {
 
 	// The three-letter currency code defined in ISO 4217.
-	CurrencyCode string `datastore:"currencyCode,omitempty" json:"currencyCode,omitempty"`
+	CurrencyCode string `firestore:"currencyCode,omitempty" json:"currencyCode,omitempty"`
 
 	// The whole units of the amount.
 	// For example if `currencyCode` is `"USD"`, then 1 unit is one US dollar.
-	Units int64 `datastore:"units,omitempty" json:"units,omitempty"`
+	Units int64 `firestore:"units,omitempty" json:"units,omitempty"`
 
 	// Number of nano (10^-9) units of the amount.
 	// The value must be between -999,999,999 and +999,999,999 inclusive.
@@ -46,7 +46,7 @@ type Money struct {
 	// If `units` is zero, `nanos` can be positive, zero, or negative.
 	// If `units` is negative, `nanos` must be negative or zero.
 	// For example $-1.75 is represented as `units`=-1 and `nanos`=-750,000,000.
-	Nanos int32 `datastore:"nanos,omitempty" json:"nanos,omitempty"`
+	Nanos int32 `firestore:"nanos,omitempty" json:"nanos,omitempty"`
 }
 
 // MoneyFromPB is a factory method that generates a Money structure from its Protocol Buffer equivalent

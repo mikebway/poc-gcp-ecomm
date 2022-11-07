@@ -15,12 +15,12 @@ const (
 //
 // See https://developers.google.com/people/api/rest/v1/people#Person.Name as field naming reference.
 type Person struct {
-	Id               string `datastore:"id,omitempty" json:"id,omitempty"`
-	FamilyName       string `datastore:"familyName,omitempty" json:"familyName,omitempty"`
-	GivenName        string `datastore:"givenName,omitempty" json:"givenName,omitempty"`
-	MiddleName       string `datastore:"middleName,omitempty" json:"middleName,omitempty"`
-	DisplayName      string `datastore:"displayName,omitempty" json:"displayName,omitempty"`
-	DisplayLastFirst string `datastore:"displayNameLastFirst,omitempty" json:"displayNameLastFirst,omitempty"`
+	Id               string `firestore:"id,omitempty" json:"id,omitempty"`
+	FamilyName       string `firestore:"familyName,omitempty" json:"familyName,omitempty"`
+	GivenName        string `firestore:"givenName,omitempty" json:"givenName,omitempty"`
+	MiddleName       string `firestore:"middleName,omitempty" json:"middleName,omitempty"`
+	DisplayName      string `firestore:"displayName,omitempty" json:"displayName,omitempty"`
+	DisplayLastFirst string `firestore:"displayNameLastFirst,omitempty" json:"displayNameLastFirst,omitempty"`
 }
 
 // PersonFromPB is a factory method that generates a Person structure from its Protocol Buffer equivalent

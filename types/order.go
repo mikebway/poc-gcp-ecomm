@@ -18,30 +18,30 @@ const (
 // it will trigger the payment and/or fulfillment phase.
 type Order struct {
 	// A UUID ID in hexadecimal string form - a unique ID for this order.
-	Id string `datastore:"id,noindex" json:"id,omitempty"`
+	Id string `firestore:"id" json:"id,omitempty"`
 
 	// SubmissionTime is the time at which cart checkout was completed and the order was submitted for payment
-	SubmissionTime Timestamp `datastore:"submissionTime" json:"submissionTime"`
+	SubmissionTime Timestamp `firestore:"submissionTime" json:"submissionTime"`
 
 	// Status describes the overall status of the order, summarizing or
 	// overriding the status of the individual order items.
-	Status OrderStatus `datastore:"status" json:"status"`
+	Status OrderStatus `firestore:"status" json:"status"`
 
 	// OrderedBy identifies the person who submitted the order
-	OrderedBy *Person `datastore:"orderedBy" json:"orderedBy"`
+	OrderedBy *Person `firestore:"orderedBy" json:"orderedBy"`
 
 	// DeliveryAddress is the postal address to which any physical items in the order
 	// are to be delivered.
 	//
 	// NOTE: delivery address is stored as a separate entity in the Google Datastore with
 	// the order key as their key ancestor.
-	DeliveryAddress *PostalAddress `datastore:"-" json:"deliveryAddress"`
+	DeliveryAddress *PostalAddress `firestore:"-" json:"deliveryAddress"`
 
 	// OrderItems is the list of one to many items that make up the order.
 	//
 	// NOTE: order items are stored as separate entities in the Google Datastore with
 	// the order key as their key ancestor.
-	OrderItems []*OrderItem `datastore:"-" json:"orderItems"`
+	OrderItems []*OrderItem `firestore:"-" json:"orderItems"`
 }
 
 // OrderStatus is an enumeration type defining the overall status of an order
@@ -59,24 +59,24 @@ const (
 // to many order items.
 type OrderItem struct {
 	// Id is a UUID ID in hexadecimal string form - a unique ID for this order item.
-	Id string `datastore:"id,noindex" json:"id,omitempty"`
+	Id string `firestore:"id" json:"id,omitempty"`
 
 	// OrderId UUID ID in hexadecimal string form - a unique ID for this item's parent order
-	OrderId string `datastore:"orderId,noindex" json:"orderId,omitempty"`
+	OrderId string `firestore:"orderId" json:"orderId,omitempty"`
 
 	// ProductCode is the equivalent of a SKU code identifying the type of
 	// product or service being ordered.
-	ProductCode string `datastore:"productCode" json:"productCode"`
+	ProductCode string `firestore:"productCode" json:"productCode"`
 
 	// Quantity is the number of this item type that is being ordered.
-	Quantity int32 `datastore:"quantity" json:"quantity"`
+	Quantity int32 `firestore:"quantity" json:"quantity"`
 
 	// UnitPrice is the price that the customer was shown for a single item
 	// when they selected the item for their cart
-	UnitPrice money.Money `datastore:"unitPrice" json:"unitPrice"`
+	UnitPrice money.Money `firestore:"unitPrice" json:"unitPrice"`
 
 	// The fulfillment state of the oder item as an enumerated value
-	Status OrderItemStatus `datastore:"status" json:"status"`
+	Status OrderItemStatus `firestore:"status" json:"status"`
 }
 
 // OrderItemStatus is an enumeration type defining the status of a single order item
