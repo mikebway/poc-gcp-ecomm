@@ -14,6 +14,10 @@ import (
 	"time"
 )
 
+const (
+	ProjectId = "poc-gcp-ecomm"
+)
+
 // CartService is a structure class with methods that implements the cart.CartAPIServer gRPC API
 // storing the data for the social graph in a Google Cloud Firestore Kind.
 type CartService struct {
@@ -21,20 +25,54 @@ type CartService struct {
 
 	// fsClient is the GCP Firestore client - it is thread safe and can be reused concurrently
 	fsClient *firestore.Client
+
+	// drProxy is used to allow unit tests to intercept firestore.DocumentRef function calls
+	// and insert errors etc. into the responses.
+	drProxy DocumentRefProxy
+
+	// dsProxy is used to allow unit tests to intercept firestore.DocumentSnapshot function calls
+	// and insert errors etc. into the responses.
+	dsProxy DocumentSnapshotProxy
+}
+
+// DocumentRefProxy defines the interface for a swappable junction that will allow us to maximize unit test coverage
+// by intercepting calls to firestore.DocumentRef methods and having them return mock errors. The default
+// production implementation of the interface will add a couple of nanoseconds of delay to normal operation but that
+// extra test coverage is worth the price.
+//
+// See https://pkg.go.dev/cloud.google.com/go/firestore#DocumentRef
+type DocumentRefProxy interface {
+	Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
+	Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error)
+	Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
+}
+
+// DocumentSnapshotProxy defines the interface for a swappable junction that will allow us to maximize unit test
+// coverage by intercepting calls to firestore.DocumentSnapshot methods and having them return mock errors. The
+// default production implementation of the interface will add a couple of nanoseconds of delay to normal
+// operation but that extra test coverage is worth the price.
+//
+// See https://pkg.go.dev/cloud.google.com/go/firestore#DocumentSnapshot
+type DocumentSnapshotProxy interface {
+	DataTo(snap *firestore.DocumentSnapshot, target interface{}) error
 }
 
 // NewCartService is a factory method returning an instance of our social graph service.
 func NewCartService() (*CartService, error) {
 
-	// Build our service instance here
-	svc := &CartService{}
+	// Build our service instance here with our default, direct passthrough, interception proxies
+	// for firestore.DocumentRef and firestore.DocumentSnapshot function calls
+	svc := &CartService{
+		drProxy: &DocRefProxy{},
+		dsProxy: &DocSnapProxy{},
+	}
 
 	// Obtain a firestore client and stuff that in the service instance
 	ctx := context.Background()
 	var err error
-	if unitTestNewCartServiceError != nil {
-		// Set the Firestore client if we are not unit testing an error situations.
-		svc.fsClient, err = firestore.NewClient(ctx, firestore.DetectProjectID)
+	if unitTestNewCartServiceError == nil {
+		// Set the Firestore client if we are not unit testing an error situation.
+		svc.fsClient, err = firestore.NewClient(ctx, ProjectId)
 
 	} else {
 		// We are unit testing and required to report an error
@@ -70,7 +108,7 @@ func (cs *CartService) CreateShoppingCart(ctx context.Context, req *pbcart.Creat
 
 	// Store the empty new cart in the firestore
 	ref := cs.fsClient.Doc(storableCart.StoreRefPath())
-	_, err := ref.Create(ctx, storableCart)
+	_, err := cs.drProxy.Create(ref, ctx, storableCart)
 	if err != nil {
 		err = fmt.Errorf("failed creating new cart in Firestore: %w", err)
 		l.Error(err.Error(), zap.String("CartId", storableCart.Id))
@@ -114,21 +152,22 @@ func (cs *CartService) getShoppingCart(ctx context.Context, cartId string) (*pbc
 	l.Info("retrieving cart", zap.String("CartId", cartId))
 
 	// Form a cart structure to receive the data from the store
-	storedCart := schema.ShoppingCart{
+	storedCart := &schema.ShoppingCart{
 		Id: cartId,
 	}
 
-	// TODO: Convert cart in one step after populating with shopper and address
+	// TODO: wrap cart retrieval in a transaction
+	// TODO: use a query to get everything is a single round trip
 
 	// Ask the firestore client for the specified cart
 	ref := cs.fsClient.Doc(storedCart.StoreRefPath())
-	snap, err := ref.Get(ctx)
+	snap, err := cs.drProxy.Get(ref, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve cart snapshot with ID %s: %w", cartId, err)
 	}
 
 	// Unmarshall the snapshot into our internal structure form
-	err = snap.DataTo(storedCart)
+	err = cs.dsProxy.DataTo(snap, storedCart)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal cart snapshot with ID %s: %w", cartId, err)
 	}
@@ -150,12 +189,12 @@ func (cs *CartService) getDeliveryAddress(ctx context.Context, cartId string) (*
 
 	// Ask the firestore client for the delivery address (if there is one)
 	ref := cs.fsClient.Doc(schema.DeliveryAddressPath(cartId))
-	snap, err := ref.Get(ctx)
+	snap, err := cs.drProxy.Get(ref, ctx)
 	if err == nil {
 
 		// Unmarshall the snapshot into our internal structure form
 		deliveryAddress := &types.PostalAddress{}
-		err = snap.DataTo(deliveryAddress)
+		err = cs.dsProxy.DataTo(snap, deliveryAddress)
 		if err != nil {
 			return nil, fmt.Errorf("failed to unmarshal delivery addreess snapshot with cart ID %s: %w", cartId, err)
 		}
@@ -185,7 +224,7 @@ func (cs *CartService) SetDeliveryAddress(ctx context.Context, req *pbcart.SetDe
 	// Store the person that requested the cart be created as a child of the cart in the firestore
 	deliveryAddress := types.PostalAddressFromPB(req.DeliveryAddress)
 	ref := cs.fsClient.Doc(schema.DeliveryAddressPath(req.CartId))
-	_, err := ref.Create(ctx, deliveryAddress)
+	_, err := cs.drProxy.Set(ref, ctx, deliveryAddress)
 	if err != nil {
 		err = fmt.Errorf("failed setting delivery address to firestore for cart: %w", err)
 		l.Error(err.Error(), zap.String("CartId", req.CartId))
@@ -203,4 +242,44 @@ func (cs *CartService) SetDeliveryAddress(ctx context.Context, req *pbcart.SetDe
 	return &pbcart.SetDeliveryAddressResponse{
 		Cart: pbCart,
 	}, nil
+}
+
+// DocRefProxy is the production (i.e. non- unit test) implementation of the DocumentRefProxy interface.
+// NewCartService configures it as the default in new CartService structure constructions.
+type DocRefProxy struct {
+	DocumentRefProxy
+}
+
+// Create is a direct pass through to the firestore.DocumentRef Create function. We use this rather than
+// calling the firestore.DocumentRef function directly so that we can replace this implementation with
+// one that allows errors to be inserted into the response when executing uni tests.
+func (p *DocRefProxy) Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
+	return doc.Create(ctx, data)
+}
+
+// Get is a direct pass through to the firestore.DocumentRef Get function. We use this rather than
+// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
+// allows errors to be inserted into the response when executing uni tests.
+func (p *DocRefProxy) Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error) {
+	return doc.Get(ctx)
+}
+
+// Set is a direct pass through to the firestore.DocumentRef Set function. We use this rather than
+// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
+// allows errors to be inserted into the response when executing uni tests.
+func (p *DocRefProxy) Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
+	return doc.Set(ctx, data)
+}
+
+// DocSnapProxy is the production (i.e. non- unit test) implementation of the DocumentSnapshotProxy interface.
+// NewCartService configures it as the default in new CartService structure constructions.
+type DocSnapProxy struct {
+	DocumentRefProxy
+}
+
+// DataTo is a direct pass through to the firestore.DocumentSnapshot DataTo function. We use this rather than
+// calling the firestore.DocumentSnapshot function directly so that we can replace this implementation with
+// one that allows errors to be inserted into the response when executing uni tests.
+func (p *DocSnapProxy) DataTo(snap *firestore.DocumentSnapshot, target interface{}) error {
+	return snap.DataTo(target)
 }

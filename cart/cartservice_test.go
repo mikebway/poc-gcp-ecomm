@@ -1,16 +1,25 @@
 package main
 
 import (
+	"cloud.google.com/go/firestore"
 	"context"
 	"errors"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	pbtypes "github.com/mikebway/poc-gcp-ecomm/pb/types"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"os"
 	"testing"
 )
 
 const (
+	// EnvFirestoreEmulator defines the environment variable name that is used to convey that the Firestore emulator
+	// is running, should be used, and how to connect to it
+	EnvFirestoreEmulator = "FIRESTORE_EMULATOR_HOST"
+
+	// FirestoreEmulatorHost defines the server name and port (in TCP6 terms) of the Firestore emulator
+	FirestoreEmulatorHost = "[::1]:8219"
+
 	// Define the person fields that we will use multiple times to define a shopper
 	shopperId          = "10615145-2010-4c5f-8347-2bb556232c31"
 	shopperFamilyName  = "Grint"
@@ -34,6 +43,18 @@ var (
 // init performs static initialization of our constants that cannot actually be literal constants
 func init() {
 	mockError = errors.New("this is a mock error")
+}
+
+// TestMain, if defined (it's optional), allows setup code to be run before and after the suite of unit tests
+// for this package.
+func TestMain(m *testing.M) {
+
+	// Configure the environment variable that informs the Firestore client that it should connect to the
+	// emulator and how to reach it.
+	_ = os.Setenv(EnvFirestoreEmulator, FirestoreEmulatorHost)
+
+	// Run all the unit tests
+	m.Run()
 }
 
 // TestCreateAndGetCart examines whether a new cart can be properly added to the database
@@ -75,43 +96,66 @@ func TestCreateAndGetCart(t *testing.T) {
 }
 
 // TestCartCreateFailure examines what happens if the Firestore Create fails creating a new cart.
-//func TestCartCreateFailure(t *testing.T) {
-//
-//	// Avoid having to pass t in to every assertion
-//	req := require.New(t)
-//
-//	// Obtain a cart service with a mock firestore client and tell the client
-//	// to return an error the first time a Put operation is invoked
-//	ctx := context.Background()
-//	service, cart := storeMockCart(ctx, req)
-//
-//	// Attempt to create a new cart
-//	ctx := context.Background()
-//	createResp, err := service.CreateShoppingCart(ctx, &pbcart.CreateShoppingCartRequest{Shopper: buildMockShopper()})
-//	req.NotNil(err, "should have seen an error creating a new cart")
-//	req.Contains(err.Error(), mockError.Error(), "should have seen the configured error creating a new cart")
-//	req.Nil(createResp, "should not have obtained a response after failing to create a new cart")
-//}
+func TestCartCreateFailure(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Initialize our target cart service
+	ctx := context.Background()
+	service, err := NewCartService()
+	req.Nil(err, "failed to obtain cart service: %v", err)
+
+	// Modify the cart service to return an error on any and every DocumentRef operation
+	service.drProxy = &UTDocRefProxy{err: mockError, allowCount: 0}
+
+	// Attempt to create a new cart
+	createResp, err := service.CreateShoppingCart(ctx, &pbcart.CreateShoppingCartRequest{Shopper: buildMockShopper()})
+	req.NotNil(err, "should have seen an error creating a new cart")
+	req.Contains(err.Error(), mockError.Error(), "should have seen the configured error creating a new cart")
+	req.Nil(createResp, "should not have obtained a response after failing to create a new cart")
+}
 
 // TestCartNotFound looks at what happens when trying to retrieve a shopping cart that does not exist.
-//func TestCartNotFound(t *testing.T) {
-//
-//	// Avoid having to pass t in to every assertion
-//	req := require.New(t)
-//
-//	// Initialize our target cart service
-//	service, err := storeMockCart()
-//	req.Nil(err, "failed to obtain service with mocked firestore client")
-//
-//	// Ask for the data for a bogus person ID
-//	ctx := context.Background()
-//	const bogusId = "not-even-a-uuid"
-//	getResp, err := service.GetShoppingCartByID(ctx, &pbcart.GetShoppingCartByIDRequest{CartId: bogusId})
-//	req.NotNil(err, "should have seen an error asking for a cart with a bogus ID")
-//	req.Contains(err.Error(), "firestore: no such entity", "did not get the expected error message")
-//	req.Contains(err.Error(), bogusId, "error message did not include the bogus ID")
-//	req.Nil(getResp, "should not have obtained a response asking for a cart with a bogus ID")
-//}
+func TestCartNotFound(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Initialize our target cart service
+	ctx := context.Background()
+	service, err := NewCartService()
+	req.Nil(err, "failed to obtain cart service: %v", err)
+
+	// Ask for the data for a bogus person ID
+	const bogusId = "not-even-a-uuid"
+	getResp, err := service.GetShoppingCartByID(ctx, &pbcart.GetShoppingCartByIDRequest{CartId: bogusId})
+	req.NotNil(err, "should have seen an error asking for a cart with a bogus ID")
+	req.Contains(err.Error(), "rpc error: code = NotFound", "did not get the expected error message")
+	req.Contains(err.Error(), bogusId, "error message did not include the bogus ID")
+	req.Nil(getResp, "should not have obtained a response asking for a cart with a bogus ID")
+}
+
+// func TestCartCorrupt looks at what happens when trying to retrieve a shopping cart that exists but for
+// which the data is somehow corrupt and cannot be unmarshalled from the retrieved snapshot.
+func TestCartCorrupt(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Initialize our target cart service
+	ctx := context.Background()
+	service, cart := storeMockCart(ctx, req)
+
+	// Modify the cart service to return an snapshot unmarshalling error every time we try to unmarshall a snapshot
+	service.dsProxy = &UTDocSnapProxy{err: mockError, allowCount: 0}
+
+	// Ask for the cart again
+	getResp, err := service.GetShoppingCartByID(ctx, &pbcart.GetShoppingCartByIDRequest{CartId: cart.Id})
+	req.NotNil(err, "should have seen an error asking for a corrupt cart")
+	req.Contains(err.Error(), "failed to unmarshal cart snapshot with ID "+cart.Id, "did not get the expected error message")
+	req.Nil(getResp, "should not have obtained a response asking for a corrupt cart")
+}
 
 // TestSetDeliveryAddress confirms that an address can be added to the cart, that the amended cart gets returned
 // with the response, and that the delivery address is present in a follow-up get of the cart.
@@ -167,83 +211,116 @@ func TestSetDeliveryAddress(t *testing.T) {
 
 // TestDeliveryAddressSetFailure examines what happens if the Firestore Get fails setting the delivery address
 // associated with a cart
-//func TestDeliveryAddressSetFailure(t *testing.T) {
-//	// Avoid having to pass t in to every assertion
-//	req := require.New(t)
-//
-//	// Initialize our target cart service and establish a cart
-//	ctx := context.Background()
-//	service, cart := storeMockCart(ctx, req)
-//
-//	// Configure our mock firestore client to return an error when the cart service attempts to
-//	// Put the delivery address to the firestore
-//	unitTestNewCartServiceError = mockError
-//	defer func() { unitTestNewCartServiceError = nil }()
-//
-//	// Add a delivery address to Harry Potter's cart
-//	deliveryAddress := buildMockDeliveryAddress()
-//	setResponse, err := service.SetDeliveryAddress(ctx, &pbcart.SetDeliveryAddressRequest{
-//		CartId:          cart.Id,
-//		DeliveryAddress: deliveryAddress,
-//	})
-//
-//	// Check that everything came back as expected
-//	req.NotNil(err, "should have seen an error adding an address to Rupert's cart")
-//	req.Contains(err.Error(), mockError.Error(), "should have seen the configured error adding an address to Rupert's cart")
-//	req.Nil(setResponse, "should have not obtained a response adding an address to Rupert's cart")
-//}
+func TestDeliveryAddressSetFailure(t *testing.T) {
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Initialize our target cart service and establish a cart
+	ctx := context.Background()
+	service, cart := storeMockCart(ctx, req)
+
+	// Modify the cart service to return an error on any and every DocumentRef operation
+	service.drProxy = &UTDocRefProxy{err: mockError, allowCount: 0}
+
+	// Add a delivery address to Harry Potter's cart
+	deliveryAddress := buildMockDeliveryAddress()
+	setResponse, err := service.SetDeliveryAddress(ctx, &pbcart.SetDeliveryAddressRequest{
+		CartId:          cart.Id,
+		DeliveryAddress: deliveryAddress,
+	})
+
+	// Check that everything came back as expected
+	req.NotNil(err, "should have seen an error adding an address to Rupert's cart")
+	req.Contains(err.Error(), mockError.Error(), "should have seen the configured error adding an address to Rupert's cart")
+	req.Nil(setResponse, "should have not obtained a response adding an address to Rupert's cart")
+}
+
+// TestDeliveryAddressGetFailure examines what happens if the Firestore Get fails getting the delivery address
+// associated with a cart
+func TestDeliveryAddressGetFailure(t *testing.T) {
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Initialize our target cart service and establish a cart
+	ctx := context.Background()
+	service, cart := storeMockCart(ctx, req)
+
+	// Add a delivery address to Harry Potter's cart
+	deliveryAddress := buildMockDeliveryAddress()
+	_, err := service.SetDeliveryAddress(ctx, &pbcart.SetDeliveryAddressRequest{
+		CartId:          cart.Id,
+		DeliveryAddress: deliveryAddress,
+	})
+
+	// Check that everything came back as expected from setting the address
+	req.Nil(err, "should not have seen an error adding an address to Rupert's cart")
+
+	// Now, modify the cart service to return an error on the second get from Firestore, i.e. the address
+	service.drProxy = &UTDocRefProxy{err: mockError, allowCount: 1}
+
+	// .. and try to get the cart
+	getResponse, err := service.GetShoppingCartByID(ctx, &pbcart.GetShoppingCartByIDRequest{CartId: cart.Id})
+	req.NotNil(err, "should have seen an error getting the address from Rupert's cart")
+	req.Contains(err.Error(), "failed to retrieve delivery address for cart with ID "+cart.Id, "should have seen the expected delivery address retrieval error but got: %v", err)
+	req.Nil(getResponse, "should not have got a response getting Rupert's cart")
+
+}
 
 // TestDeliveryAddressSetResponseFailure examines what happens if the Firestore Get fails when trying to gather the
 // whole shopping cart from the firestore after setting the delivery address into it.
-//func TestDeliveryAddressSetResponseFailure(t *testing.T) {
-//	// Avoid having to pass t in to every assertion
-//	req := require.New(t)
-//
-//	// Initialize our target cart service and establish a cart
-//	ctx := context.Background()
-//	service, cart := storeMockCart(ctx, req)
-//
-//	// Configure our mock firestore client to return an error when the cart service attempts to
-//	// Get the shopping cart out of the firestore after the address has been successfully Put.
-//	service.dsClient.(*mockFirestoreClient).GetError = mockError
-//
-//	// Add a delivery address to Harry Potter's cart
-//	deliveryAddress := buildMockDeliveryAddress()
-//	setResponse, err := service.SetDeliveryAddress(ctx, &pbcart.SetDeliveryAddressRequest{
-//		CartId:          cart.Id,
-//		DeliveryAddress: deliveryAddress,
-//	})
-//
-//	// Check that everything came back as expected
-//	req.NotNil(err, "should have seen an error adding an address to Rupert's cart")
-//	req.Contains(err.Error(), mockError.Error(), "should have seen the configured error adding an address to Rupert's cart")
-//	req.Nil(setResponse, "should have not obtained a response adding an address to Rupert's cart")
-//}
+func TestDeliveryAddressSetResponseFailure(t *testing.T) {
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
 
-// TestDeliveryAddressGetFailure examines what happens if the Firestore Get fails reading the delivery address
-// associated with a cart
-//func TestDeliveryAddressGetFailure(t *testing.T) {
-//
-//	// Avoid having to pass t in to every assertion
-//	req := require.New(t)
-//
-//	// Initialize our target cart service and establish a cart
-//	ctx := context.Background()
-//	service, shoppingCart := storeMockCart(ctx, req)
-//
-//	// Evaluate the configuration of the just created shopping cart
-//	req.NotEmpty(shoppingCart.Id, "created cart should an ID")
-//
-//	// Instruct the mock firestore client to return an error on the second Get request (for the delivery address)
-//	service.dsClient.(*mockFirestoreClient).GetError = mockError
-//	service.dsClient.(*mockFirestoreClient).GetErrorAfterNCalls = 1
-//
-//	// Attempt to get the cart from the firestore
-//	getResp, err := service.GetShoppingCartByID(ctx, &pbcart.GetShoppingCartByIDRequest{CartId: shoppingCart.Id})
-//	req.NotNil(err, "should have seen an error getting a stored cart")
-//	req.Contains(err.Error(), mockError.Error(), "should have seen the configured error getting a stored cart")
-//	req.Nil(getResp, "should not have obtained a response after failing to get a stored cart")
-//}
+	// Initialize our target cart service and establish a cart
+	ctx := context.Background()
+	service, cart := storeMockCart(ctx, req)
+
+	// Modify the cart service to return an error only after the address has been set into the cart successfully
+	service.drProxy = &UTDocRefProxy{err: mockError, allowCount: 1}
+
+	// Add a delivery address to Rupert Potter's cart
+	deliveryAddress := buildMockDeliveryAddress()
+	setResponse, err := service.SetDeliveryAddress(ctx, &pbcart.SetDeliveryAddressRequest{
+		CartId:          cart.Id,
+		DeliveryAddress: deliveryAddress,
+	})
+
+	// Check that everything came back as expected
+	req.NotNil(err, "should have seen an error adding an address to Rupert's cart")
+	req.Contains(err.Error(), mockError.Error(), "should have seen the configured error adding an address to Rupert's cart")
+	req.Nil(setResponse, "should have not obtained a response adding an address to Rupert's cart")
+}
+
+// TestDeliveryAddressCorrupt examines what happens if the Firestore Get fails reading the delivery address
+// associated with a cart because the delivery address snapshot cannot be unmarshalled.
+func TestDeliveryAddressCorrupt(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Initialize our target cart service and establish a cart
+	ctx := context.Background()
+	service, cart := storeMockCart(ctx, req)
+
+	// Evaluate the configuration of the just created shopping cart
+	req.NotEmpty(cart.Id, "created cart should an ID")
+
+	// Modify the cart service to return an error only after the address has been set into the cart successfully
+	service.dsProxy = &UTDocSnapProxy{err: mockError, allowCount: 1}
+
+	// Add a delivery address to Rupert Potter's cart
+	deliveryAddress := buildMockDeliveryAddress()
+	setResponse, err := service.SetDeliveryAddress(ctx, &pbcart.SetDeliveryAddressRequest{
+		CartId:          cart.Id,
+		DeliveryAddress: deliveryAddress,
+	})
+
+	// Attempt to get the cart from the firestore
+	req.NotNil(err, "should have seen an error setting an address into a stored cart")
+	req.Contains(err.Error(), mockError.Error(), "should have seen the configured error getting a stored cart")
+	req.Nil(setResponse, "should not have obtained a response after failing to set an address into a stored cart")
+}
 
 // storeMockCart establishes and caches a cart service the first time it is called and and uses that to create
 // and empty shopping cart, returning both to the calling unit test. The supplied require.Assertions will be
@@ -251,7 +328,7 @@ func TestSetDeliveryAddress(t *testing.T) {
 func storeMockCart(ctx context.Context, req *require.Assertions) (*CartService, *pbcart.ShoppingCart) {
 
 	// Initialize our target cart service
-	service, err := getTestTarget()
+	service, err := NewCartService()
 	req.Nil(err, "failed to obtain cart service: %v", err)
 
 	// Establish a cart for our mock shopper
@@ -287,18 +364,82 @@ func buildMockDeliveryAddress() *pbtypes.PostalAddress {
 	}
 }
 
-// testTarget is a cached instance of the CartService used as a target for the majority of the tests in
-// this package. It is initialized the first time that getTestTarget is called.
-var testTarget *CartService
+// UTDocRefProxy is a unit test implementation of the DocumentRefProxy interface that allows
+// unit tests to have Firestore operations return errors.
+type UTDocRefProxy struct {
+	DocumentRefProxy
 
-// getTestTarget returns a singleton instance of the CartService for use in the majority of unit tests.
-func getTestTarget() (*CartService, error) {
-	if testTarget == nil {
-		svc, err := NewCartService()
-		if err != nil {
-			return nil, err
-		}
-		testTarget = svc
+	// err is the error to be returned if it is not nil
+	err error
+
+	// allowCount, if greater than zero, is the number of calls to allow before returning the error
+	allowCount int
+}
+
+// Create is a pass through to the firestore.DocumentRef Create function  that allows
+// unit tests to have Firestore operations return errors.
+func (p *UTDocRefProxy) Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
+
+	// Are we to return an error and if so, do we return it now or after some later call?
+	if p.err != nil && p.allowCount <= 0 {
+		return nil, p.err
 	}
-	return testTarget, nil
+
+	// We are to allow the call through this time, but maybe not next time
+	p.allowCount--
+	return doc.Create(ctx, data)
+}
+
+// Get is a pass through to the firestore.DocumentRef Get function that allows
+// unit tests to have Firestore operations return errors.
+func (p *UTDocRefProxy) Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error) {
+
+	// Are we to return an error and if so, do we return it now or after some later call?
+	if p.err != nil && p.allowCount <= 0 {
+		return nil, p.err
+	}
+
+	// We are to allow the call through this time, but maybe not next time
+	p.allowCount--
+	return doc.Get(ctx)
+}
+
+// Set is a pass through to the firestore.DocumentRef Set function that allows
+// unit tests to have Firestore operations return errors.
+func (p *UTDocRefProxy) Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
+
+	// Are we to return an error and if so, do we return it now or after some later call?
+	if p.err != nil && p.allowCount <= 0 {
+		return nil, p.err
+	}
+
+	// We are to allow the call through this time, but maybe not next time
+	p.allowCount--
+	return doc.Set(ctx, data)
+}
+
+// UTDocSnapProxy is a unit test implementation of the DocumentSnapshotProxy interface that allows
+// unit tests to have Firestore operations return errors.
+type UTDocSnapProxy struct {
+	DocumentRefProxy
+
+	// err is the error to be returned if it is not nil
+	err error
+
+	// allowCount, if greater than zero, is the number of calls to allow before returning the error
+	allowCount int
+}
+
+// DataTo is a direct pass through to the firestore.DocumentSnapshot DataTo function that allows
+// unit tests to have Firestore operations return errors.
+func (p *UTDocSnapProxy) DataTo(snap *firestore.DocumentSnapshot, target interface{}) error {
+
+	// Are we to return an error and if so, do we return it now or after some later call?
+	if p.err != nil && p.allowCount <= 0 {
+		return p.err
+	}
+
+	// We are to allow the call through this time, but maybe not next time
+	p.allowCount--
+	return snap.DataTo(target)
 }
