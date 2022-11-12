@@ -5,14 +5,14 @@
 -
 - This project is incomplete and may never be completed!!   
 -
-- Also, right now, unit test coverage is pathetic!
+- Only the first service - the Shopping Cart service - is present so far.
 ```
 
 A proof of concept (POC) project used to experiment with and demonstrate implementing:
 
 * gRPC services with Cloud Run
-* Entity tree storage with Datastore
-* Datastore CDC event generation to EventArc
+* Entity tree storage with Firestore
+* Firestore CDC event generation to EventArc
 * EventArc triggered business logic Cloud Functions
 * Cloud Task triggered business logic Cloud Functions
 * Loosely coupled bounded contexts
@@ -25,11 +25,11 @@ to successfully build and deploy services to the Google Cloud Platform can be fo
 pages:
 
 #### The Scenario
-* [The gRPC Cart Microservice](cart/README.md)
+* [The gRPC Cart Microservice](cart/README.md) **NOT YET WRITTEN**
 
 #### How To ...
 * [Use BloomRPC to invoke gRPC Cloud Run services](docs/BLOOMRPC.md)
-* [Grant Datastore access to Cloud Run services](docs/DATASTORE_ACCESS.md)
+* [Grant service account access for Cloud Run services](docs/DATASTORE_ACCESS.md)
 * [Grant Cloud Build access to private Git repos](docs/PRIVATEREPOS.md)
 * [Build leaner Go lervice lontainers](docs/LEAN.md)
 
@@ -50,9 +50,6 @@ significant locations:
 │ 
 ├── docs         <-- Additional README documentation, not specific to any service or module.
 │ 
-├── dsinterface  <-- Go library module containing a generated interface definition for the Google
-│                    Datastore client. This is used in place of the direct Datastore client to 
-│                    facilitate unit testing.
 ├── pb           <-- Go library module generated from the gRPC service and protocol buffer message
 │                    schema. This is referenced by service modules to facilitate implementation of
 │                    the gRPC APIs. 
@@ -79,8 +76,19 @@ The following need to be installed locally to build and deploy the project compo
   * `brew install protoc-gen-go`
   * `brew install protoc-gen-go-grpc`
 * The `gcloud` Google Cloud SDK: [cloud.google.com/sdk/docs/install-sdk](https://cloud.google.com/sdk/docs/install-sdk)
+
+## For Local and Remote Testing
+
+* Firestore Database Emulator
+  * `brew install openjdk`
+  * `gcloud components update`
+  * `gcloud emulators firestore start`
+    * Ctrl-C to exit once it has downloaded and started
 * BloomRPC, the equivalent of Postman for testing gRPC APIs
   * `brew install --cask bloomrpc`
+
+### Non-essential but Potentially Useful
+
 * Docker CLI tools - not essential but might be useful:
   * For Intel Macs - `brew install docker hyperkit minikube skaffold kubectl`
   * For Apple Silicon M1/M2 Macs: - `brew install colima minikube skaffold docker kubernetes-cli`
@@ -88,16 +96,22 @@ The following need to be installed locally to build and deploy the project compo
 ## Google Cloud Prerequisites
 
 1. Your Google Cloud account must define a project with the same ID as that found in `PROJECT_ID` values defined in
-the `Makefile` for each of the service and cloud function modules contained in this repository, i.e. `./cart` etc.
-Unless you have forked this project (see below), that will be `poc-gcp-ecomm`.
+   the `Makefile` for each of the service and cloud function modules contained in this repository, i.e. `./cart` etc.
+   Unless you have forked this project (see below), that will be `poc-gcp-ecomm`.
 
+2. The Firestore service must have been enabled for the project.
 
-2. The Datastore service must have been enabled for the project.
+3. Grant the Cloud Build service account access to the Secrets Manager, Cloud Functions, and Cloud Run. See 
+   [Configuring access for Cloud Build Service Account](https://cloud.google.com/build/docs/securing-builds/configure-access-for-cloud-build-service-account)
 
+4. Follow the instructions at [Grant Cloud Build access to private Git repos](docs/PRIVATEREPOS.md) to allow
+   Cloud Build access to the code repository. The `SSH_KEY`secret that you set up will be referenced by
+   component `cloudbuild.yaml` files to allow CLoud Build to reference Go package/module versions referenced
+   by `go.mod` files.
 
-3. After successfully running `make deploy` for the first time, but before attempting to invoke any 
-of the gRPC APIs you must create service accounts for each of them and grant those accounts read-write
-access to the Datastore service. See [Granting Datastore Access](docs/DATASTORE_ACCESS.md).
+5. After successfully running `make deploy` for the first time, but before attempting to invoke any 
+   of the gRPC APIs you must create service accounts for each of them and grant those accounts read-write
+   access to the Datastore service. See [Granting Datastore Access](docs/DATASTORE_ACCESS.md).
 
 ## Forking the Repository
 

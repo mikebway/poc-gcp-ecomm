@@ -48,7 +48,8 @@ a Cloud Run service build, this can be summarized as:
      ```
 
 2. [Store the private SSH key in the GCP Secret Manager](https://cloud.google.com/build/docs/access-github-from-build#store_the_private_ssh_key_in)
-   of your project.
+   of your project. As used in the `cloudbuild.yaml` files, the name of the secret should be the concatenation of
+   the project ID and `_deploy`.
 
 3. [Add the public SSH key to your private repository's deploy keys](https://cloud.google.com/build/docs/access-github-from-build#add_the_public_ssh_key_to_your_private_repositorys_deploy_keys)
    or your organization's keys.

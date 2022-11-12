@@ -1,7 +1,9 @@
-# Granting Datastore Access to Services
+# Granting Service Account Access for Cloud Run Services
 
-Best practice is to grant a Cloud Run service access to the Google Cloud project's Datastore via though granting 
-a role to the client service specific `service account`. First the service must have a service account! 
+**IMPORTANT:** Native Firestore access control for Cloud Run service is not typically managed via service accounts. The 
+documentation provided here is for the case where Firestore is being run in Datastore mode. The principles
+here could be applied to grant a Cloud Run service access to Datastore or any other GCP service that 
+requires a service account role.
 
 ## Create a Service Account for the Service
 

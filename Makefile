@@ -35,7 +35,7 @@ test: protobuf ## Compile code and run unit tests locally on all components that
 
 .PHONY: firestore
 firestore: ## Run the Firestore emulator
-	gcloud emulators firestore start --project poc-gcp-ecomm
+	gcloud emulators firestore start --host-port=[::1]:8219 --project=poc-gcp-ecomm
 
 .PHONY: protobuf
 protobuf: ${GO_SERVICE_FILES} ## Compile the protocol buffer / gRPC schema files
