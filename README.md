@@ -25,7 +25,7 @@ to successfully build and deploy services to the Google Cloud Platform can be fo
 pages:
 
 #### The Scenario
-* [The gRPC Cart Microservice](cart/README.md) **NOT YET WRITTEN**
+* [The gRPC Cart Microservice](cart/README.md) 
 
 #### How To ...
 * [Use BloomRPC to invoke gRPC Cloud Run services](docs/BLOOMRPC.md)
