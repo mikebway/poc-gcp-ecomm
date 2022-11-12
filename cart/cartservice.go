@@ -45,6 +45,7 @@ type DocumentRefProxy interface {
 	Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
 	Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error)
 	Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
+	Delete(doc *firestore.DocumentRef, ctx context.Context) (*firestore.WriteResult, error)
 }
 
 // DocumentSnapshotProxy defines the interface for a swappable junction that will allow us to maximize unit test
@@ -55,6 +56,53 @@ type DocumentRefProxy interface {
 // See https://pkg.go.dev/cloud.google.com/go/firestore#DocumentSnapshot
 type DocumentSnapshotProxy interface {
 	DataTo(snap *firestore.DocumentSnapshot, target interface{}) error
+}
+
+// DocRefProxy is the production (i.e. non- unit test) implementation of the DocumentRefProxy interface.
+// NewCartService configures it as the default in new CartService structure constructions.
+type DocRefProxy struct {
+	DocumentRefProxy
+}
+
+// Create is a direct pass through to the firestore.DocumentRef Create function. We use this rather than
+// calling the firestore.DocumentRef function directly so that we can replace this implementation with
+// one that allows errors to be inserted into the response when executing uni tests.
+func (p *DocRefProxy) Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
+	return doc.Create(ctx, data)
+}
+
+// Get is a direct pass through to the firestore.DocumentRef Get function. We use this rather than
+// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
+// allows errors to be inserted into the response when executing uni tests.
+func (p *DocRefProxy) Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error) {
+	return doc.Get(ctx)
+}
+
+// Set is a direct pass through to the firestore.DocumentRef Set function. We use this rather than
+// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
+// allows errors to be inserted into the response when executing uni tests.
+func (p *DocRefProxy) Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
+	return doc.Set(ctx, data)
+}
+
+// Delete is a direct pass through to the firestore.DocumentRef Delete function. We use this rather than
+// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
+// allows errors to be inserted into the response when executing uni tests.
+func (p *DocRefProxy) Delete(doc *firestore.DocumentRef, ctx context.Context) (*firestore.WriteResult, error) {
+	return doc.Delete(ctx)
+}
+
+// DocSnapProxy is the production (i.e. non- unit test) implementation of the DocumentSnapshotProxy interface.
+// NewCartService configures it as the default in new CartService structure constructions.
+type DocSnapProxy struct {
+	DocumentRefProxy
+}
+
+// DataTo is a direct pass through to the firestore.DocumentSnapshot DataTo function. We use this rather than
+// calling the firestore.DocumentSnapshot function directly so that we can replace this implementation with
+// one that allows errors to be inserted into the response when executing uni tests.
+func (p *DocSnapProxy) DataTo(snap *firestore.DocumentSnapshot, target interface{}) error {
+	return snap.DataTo(target)
 }
 
 // NewCartService is a factory method returning an instance of our social graph service.
@@ -152,9 +200,7 @@ func (cs *CartService) getShoppingCart(ctx context.Context, cartId string) (*pbc
 	l.Info("retrieving cart", zap.String("CartId", cartId))
 
 	// Form a cart structure to receive the data from the store
-	storedCart := &schema.ShoppingCart{
-		Id: cartId,
-	}
+	storedCart := &schema.ShoppingCart{Id: cartId}
 
 	// TODO: wrap cart retrieval in a transaction
 	// TODO: use a query to get everything is a single round trip
@@ -244,42 +290,151 @@ func (cs *CartService) SetDeliveryAddress(ctx context.Context, req *pbcart.SetDe
 	}, nil
 }
 
-// DocRefProxy is the production (i.e. non- unit test) implementation of the DocumentRefProxy interface.
-// NewCartService configures it as the default in new CartService structure constructions.
-type DocRefProxy struct {
-	DocumentRefProxy
+// AddItemToShoppingCart adds an item to a cart.
+//
+// TODO: Confirm that the item type is not already in the cart. Combine multiples / increasing quantity??
+// TODO: Mock handling of requirements / dependencies / rejecting invalid combinations
+// TODO: Access control? - Cannot change if cart already closed. Cannot change if user/shopper does not match.
+func (cs *CartService) AddItemToShoppingCart(ctx context.Context, req *pbcart.AddItemToShoppingCartRequest) (*pbcart.AddItemToShoppingCartResponse, error) {
+
+	// Obtain a shortcut handle on our globally configured logger
+	l := zap.L()
+
+	// Form a unique ID for the new cart item and include that in our entry log statement
+	itemId := uuid.New().String()
+	l.Info("adding cart item", zap.String("CartId", req.CartId), zap.String("ItemID", itemId))
+
+	// Configure the ID values for this new item in the cart then transform it to our stored struct type
+	req.Item.Id = itemId
+	req.Item.CartId = req.CartId
+	item := schema.ShoppingCartItemFromPB(req.Item)
+
+	// Store the item as a child of the cart
+	ref := cs.fsClient.Doc(item.StoreRefPath())
+	_, err := cs.drProxy.Set(ref, ctx, item)
+	if err != nil {
+		err = fmt.Errorf("failed setting cart item to firestore for cart: %w", err)
+		l.Error(err.Error(), zap.String("CartId", item.CartId), zap.String("ItemID", item.Id))
+		return nil, err
+	}
+
+	// All good, log our joy before returning the protocol buffer transliteration of our retrieved cart
+	l.Info("cart item added successfully", zap.String("CartId", item.CartId), zap.String("ItemID", item.Id))
+
+	// Have our internal sibling do all the remaining work to return the complete cart as it now stands
+	pbCart, err := cs.getShoppingCart(ctx, req.CartId)
+	if err != nil {
+		return nil, err
+	}
+	return &pbcart.AddItemToShoppingCartResponse{Cart: pbCart}, nil
 }
 
-// Create is a direct pass through to the firestore.DocumentRef Create function. We use this rather than
-// calling the firestore.DocumentRef function directly so that we can replace this implementation with
-// one that allows errors to be inserted into the response when executing uni tests.
-func (p *DocRefProxy) Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
-	return doc.Create(ctx, data)
+// RemoveItemFromShoppingCart removes an item from the cart.
+func (cs *CartService) RemoveItemFromShoppingCart(ctx context.Context, req *pbcart.RemoveItemFromShoppingCartRequest) (*pbcart.RemoveItemFromShoppingCartResponse, error) {
+
+	// Obtain a shortcut handle on our globally configured logger then log what we are about to do
+	l := zap.L()
+	l.Info("removing cart item", zap.String("CartId", req.CartId), zap.String("ItemID", req.ItemId))
+
+	// Use a partial item structure to form the key of the target item to be deleted
+	target := schema.ShoppingCartItem{
+		Id:     req.ItemId,
+		CartId: req.CartId,
+	}
+
+	// Instruct Firestore to remove the item with extreme prejudice
+	ref := cs.fsClient.Doc(target.StoreRefPath())
+	_, err := cs.drProxy.Delete(ref, ctx)
+	if err != nil {
+		err = fmt.Errorf("failed deleting cart item from firestore: %w", err)
+		l.Error(err.Error(), zap.String("CartId", target.CartId), zap.String("ItemID", target.Id))
+		return nil, err
+	}
+
+	// Have our internal sibling do all the remaining work to return the complete cart as it now stands
+	pbCart, err := cs.getShoppingCart(ctx, req.CartId)
+	if err != nil {
+		return nil, err
+	}
+	return &pbcart.RemoveItemFromShoppingCartResponse{Cart: pbCart}, nil
 }
 
-// Get is a direct pass through to the firestore.DocumentRef Get function. We use this rather than
-// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
-// allows errors to be inserted into the response when executing uni tests.
-func (p *DocRefProxy) Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error) {
-	return doc.Get(ctx)
+// CheckoutShoppingCart submits the order / checkout the shopping cart
+//
+// TODO: consider more informative structured error reporting in the response rather than as an HTTP / protocol error?
+func (cs *CartService) CheckoutShoppingCart(ctx context.Context, req *pbcart.CheckoutShoppingCartRequest) (*pbcart.CheckoutShoppingCartResponse, error) {
+
+	// Obtain a shortcut handle on our globally configured logger then log what we are about to do
+	l := zap.L()
+	l.Info("checking out cart", zap.String("CartId", req.CartId))
+
+	// Check out and abandon are almost the same data operation except for the status value and log messaging
+	pbCart, err := cs.closeCart(ctx, req.CartId, schema.CsCheckedOut)
+	if err != nil {
+		return nil, err
+	}
+
+	// All done, all happy
+	l.Info("cart checked out successfully", zap.String("CartId", req.CartId))
+	return &pbcart.CheckoutShoppingCartResponse{Cart: pbCart}, nil
 }
 
-// Set is a direct pass through to the firestore.DocumentRef Set function. We use this rather than
-// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
-// allows errors to be inserted into the response when executing uni tests.
-func (p *DocRefProxy) Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
-	return doc.Set(ctx, data)
+// AbandonShoppingCart explicitly abandons a shopping cart in response to a user request (as against the
+// system cancelling a cart that has gone unused for some period of time).
+func (cs *CartService) AbandonShoppingCart(ctx context.Context, req *pbcart.AbandonShoppingCartRequest) (*pbcart.AbandonShoppingCartResponse, error) {
+
+	// Obtain a shortcut handle on our globally configured logger then log what we are about to do
+	l := zap.L()
+	l.Info("abandoning out cart", zap.String("CartId", req.CartId))
+
+	// Check out and abandon are almost the same data operation except for the status value and log messaging
+	pbCart, err := cs.closeCart(ctx, req.CartId, schema.CsAbandonedByUser)
+	if err != nil {
+		return nil, err
+	}
+
+	// All done, all happy
+	l.Info("cart abandoned successfully", zap.String("CartId", req.CartId))
+	return &pbcart.AbandonShoppingCartResponse{Cart: pbCart}, nil
 }
 
-// DocSnapProxy is the production (i.e. non- unit test) implementation of the DocumentSnapshotProxy interface.
-// NewCartService configures it as the default in new CartService structure constructions.
-type DocSnapProxy struct {
-	DocumentRefProxy
-}
+// closeCart updates the status of an open cart to one of the closed status options.
+func (cs *CartService) closeCart(ctx context.Context, cartId string, closedState schema.CartStatus) (*pbcart.ShoppingCart, error) {
 
-// DataTo is a direct pass through to the firestore.DocumentSnapshot DataTo function. We use this rather than
-// calling the firestore.DocumentSnapshot function directly so that we can replace this implementation with
-// one that allows errors to be inserted into the response when executing uni tests.
-func (p *DocSnapProxy) DataTo(snap *firestore.DocumentSnapshot, target interface{}) error {
-	return snap.DataTo(target)
+	// Ask the firestore client for the specified cart
+	storedCart := schema.ShoppingCart{Id: cartId}
+	ref := cs.fsClient.Doc(storedCart.StoreRefPath())
+	snap, err := cs.drProxy.Get(ref, ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve cart snapshot with ID %s: %w", cartId, err)
+	}
+
+	// Unmarshall the snapshot into our internal structure form
+	err = cs.dsProxy.DataTo(snap, storedCart)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal cart snapshot with ID %s: %w", cartId, err)
+	}
+
+	// If the status is not currently open, we can't abandon it!
+	if storedCart.Status != schema.CsOpen {
+
+		// Watch out in case the cart status is one that we don't know about
+		state := pbcart.ShoppingCartStatus_name[int32(storedCart.Status)]
+		if state == "" {
+			state = "unrecognized"
+		}
+		return nil, fmt.Errorf("cannot change status of cart that is not open: cart ID=%s, status=%s", storedCart.Id, state)
+	}
+
+	// Change the status and write the cart back to teh store
+	storedCart.Status = closedState
+	_, err = cs.drProxy.Set(ref, ctx, storedCart)
+	if err != nil {
+		err = fmt.Errorf("failed putting updated cart status to datastore: %w", err)
+		zap.L().Error(err.Error(), zap.String("CartId", storedCart.Id))
+		return nil, err
+	}
+
+	// All good, return the full updated cart or an error we get trying to retrieve it
+	return cs.getShoppingCart(ctx, storedCart.Id)
 }

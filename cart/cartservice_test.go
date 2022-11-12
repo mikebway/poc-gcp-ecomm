@@ -7,6 +7,7 @@ import (
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	pbtypes "github.com/mikebway/poc-gcp-ecomm/pb/types"
 	"github.com/stretchr/testify/require"
+	pbmoney "google.golang.org/genproto/googleapis/type/money"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"os"
 	"testing"
@@ -33,6 +34,17 @@ const (
 	addrLocality   = "Ottery St Catchpole"
 	addrPostalCode = "EX11 1HF"
 	addrRegionCode = "GB"
+
+	// Define the cart item fields for our mock cart item
+	cartItemPriceCurrency = "USD"
+	cartItemProductCode1  = "gold_yoyo"
+	cartItemQuantity1     = 3
+	cartItemPriceUnits1   = 1_651
+	cartItemPriceNanos1   = 940_000_000
+	cartItemProductCode2  = "plastic_yoyo"
+	cartItemQuantity2     = 13
+	cartItemPriceUnits2   = 1
+	cartItemPriceNanos2   = 990_000_000
 )
 
 var (
@@ -322,6 +334,69 @@ func TestDeliveryAddressCorrupt(t *testing.T) {
 	req.Nil(setResponse, "should not have obtained a response after failing to set an address into a stored cart")
 }
 
+// TestAddItemSuccess examines what happens when adding a cart time has no issues writing to the data store.
+func TestAddItemSuccess(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Initialize our target cart service and establish an open cart
+	ctx := context.Background()
+	service, cart := storeMockCart(ctx, req)
+
+	// Define two cart items to add to the - we want to test the looping aspects of returning a cart
+	itemOne := buildMockCartItem(cartItemProductCode1)
+	itemTwo := buildMockCartItem(cartItemProductCode2)
+
+	// Add both items to the cart in turn
+	response, err := service.AddItemToShoppingCart(ctx, &pbcart.AddItemToShoppingCartRequest{CartId: cart.Id, Item: itemOne})
+	req.Nil(err, "should not have seen an error adding %s to Rupert's cart: %v", cartItemProductCode1, err)
+	req.NotNil(response, "should have obtained a response after adding %s Rupert's cart", cartItemProductCode1)
+	req.NotNil(response.GetCart(), "response should have contained a cart after adding %s", cartItemProductCode1)
+	responseItems := response.GetCart().GetCartItems()
+	req.Equal(1, len(responseItems), "returned cart should have contained one item")
+	responseItem1 := responseItems[0]
+	validateCartItem1(req, responseItem1, "first")
+
+	// ... add the second item
+	response, err = service.AddItemToShoppingCart(ctx, &pbcart.AddItemToShoppingCartRequest{CartId: cart.Id, Item: itemTwo})
+	req.Nil(err, "should not have seen an error adding %s to Rupert's cart: %v", cartItemProductCode2, err)
+	req.NotNil(response, "should have obtained a response after adding %s Rupert's cart", cartItemProductCode2)
+	req.NotNil(response.GetCart(), "response should have contained a cart after adding %s", cartItemProductCode2)
+	responseItems = response.GetCart().GetCartItems()
+	req.Equal(2, len(responseItems), "returned cart should have contained two items")
+
+	// The order of the two added items in the response is non-deterministic :-( a=so fix that
+	var responseItem2 *pbcart.CartItem
+	if responseItems[0].ProductCode == cartItemProductCode1 {
+		responseItem1 = responseItems[0]
+		responseItem2 = responseItems[1]
+	} else {
+		responseItem1 = responseItems[1]
+		responseItem2 = responseItems[0]
+	}
+
+	// Verify both items in the second response
+	validateCartItem1(req, responseItem1, "second")
+	req.Equal(cartItemProductCode2, responseItem2.ProductCode, "returned cart should have contained %s", cartItemProductCode2)
+	req.Equal(cartItemQuantity1, responseItem2.Quantity, "returned cart had the wrong quantity of %s", cartItemProductCode2)
+	req.NotNil(responseItem2.UnitPrice, "returned cart had no price for %s", cartItemProductCode2)
+	req.Equal(cartItemPriceCurrency, responseItem2.UnitPrice.CurrencyCode, "returned cart the wrong currency code for %s", cartItemProductCode2)
+	req.Equal(cartItemPriceUnits1, responseItem2.UnitPrice.Units, "returned cart had the wrong unit dollars for %s", cartItemProductCode2)
+	req.Equal(cartItemPriceNanos1, responseItem2.UnitPrice.Nanos, "returned cart had the wrong unit cents for %s", cartItemProductCode2)
+}
+
+// validateCartItem1 is used by TestAddItemSuccess to check the first addition of cartItemProductCode1 is present and
+// correct after both the first and second item are added to a cart.
+func validateCartItem1(req *require.Assertions, item *pbcart.CartItem, validationContext string) {
+	req.Equal(cartItemProductCode1, item.ProductCode, "returned cart after %s add should have contained %s", validationContext, cartItemProductCode1)
+	req.Equal(cartItemQuantity1, item.Quantity, "returned cart after %s add had the wrong quantity of %s", validationContext, cartItemProductCode1)
+	req.NotNil(item.UnitPrice, "returned cart after %s add had no price for %s", validationContext, cartItemProductCode1)
+	req.Equal(cartItemPriceCurrency, item.UnitPrice.CurrencyCode, "returned cart after %s add had the wrong currency code for %s", validationContext, cartItemProductCode1)
+	req.Equal(cartItemPriceUnits1, item.UnitPrice.Units, "returned cart after %s add had the wrong unit dollars for %s", validationContext, cartItemProductCode1)
+	req.Equal(cartItemPriceNanos1, item.UnitPrice.Nanos, "returned cart after %s add had the wrong unit cents for %s", validationContext, cartItemProductCode1)
+}
+
 // storeMockCart establishes and caches a cart service the first time it is called and and uses that to create
 // and empty shopping cart, returning both to the calling unit test. The supplied require.Assertions will be
 // used to report any issues occur with either step, aborting the unit test before it really gets started.
@@ -361,6 +436,44 @@ func buildMockDeliveryAddress() *pbtypes.PostalAddress {
 		PostalCode:   addrPostalCode,
 		Locality:     addrLocality,
 		AddressLines: []string{addrLine1, addrLine2},
+	}
+}
+
+// buildMockCartItem returns a pbcart.CartItem structure populated with the constant attributes
+// defined at the head of this file to be used to create new shopping carts in our tests.
+//
+// Which quantity and price you get depends on which product code you ask for. Implementation
+// is crude: ask for a product we didn't code for and you will get cartItemProductCode1 with
+// no warning or complaint.
+func buildMockCartItem(productCode string) *pbcart.CartItem {
+
+	// Which product are we building for?
+	switch productCode {
+
+	case cartItemProductCode2:
+		return &pbcart.CartItem{
+			ProductCode: cartItemProductCode2,
+			Quantity:    cartItemQuantity2,
+			UnitPrice: &pbmoney.Money{
+				CurrencyCode: cartItemPriceCurrency,
+				Units:        cartItemPriceUnits2,
+				Nanos:        cartItemPriceNanos2,
+			},
+		}
+
+	case cartItemProductCode1:
+		fallthrough
+	default:
+		// If we don't recognize the product type we were asked for we will return cartItemProductCode1 (gold yoyo)
+		return &pbcart.CartItem{
+			ProductCode: cartItemProductCode1,
+			Quantity:    cartItemQuantity1,
+			UnitPrice: &pbmoney.Money{
+				CurrencyCode: cartItemPriceCurrency,
+				Units:        cartItemPriceUnits1,
+				Nanos:        cartItemPriceNanos1,
+			},
+		}
 	}
 }
 
@@ -416,6 +529,20 @@ func (p *UTDocRefProxy) Set(doc *firestore.DocumentRef, ctx context.Context, dat
 	// We are to allow the call through this time, but maybe not next time
 	p.allowCount--
 	return doc.Set(ctx, data)
+}
+
+// Delete is a pass through to the firestore.DocumentRef Delete function that allows
+// unit tests to have Firestore operations return errors.
+func (p *UTDocRefProxy) Delete(doc *firestore.DocumentRef, ctx context.Context) (*firestore.WriteResult, error) {
+
+	// Are we to return an error and if so, do we return it now or after some later call?
+	if p.err != nil && p.allowCount <= 0 {
+		return nil, p.err
+	}
+
+	// We are to allow the call through this time, but maybe not next time
+	p.allowCount--
+	return doc.Delete(ctx)
 }
 
 // UTDocSnapProxy is a unit test implementation of the DocumentSnapshotProxy interface that allows

@@ -68,7 +68,7 @@ type CartStatus int32
 const (
 	CsUnspecified        CartStatus = 0
 	CsOpen               CartStatus = 1
-	CsOrderSubmitted     CartStatus = 2
+	CsCheckedOut         CartStatus = 2
 	CsAbandonedByUser    CartStatus = 3
 	CsAbandonedByTimeout CartStatus = 4
 )
@@ -192,6 +192,11 @@ type ShoppingCartItem struct {
 	UnitPrice *types.Money `firestore:"unitPrice" json:"unitPrice"`
 }
 
+// StoreRefPath returns the string representation of the document reference path for this ShoppingCartItem.
+func (item *ShoppingCartItem) StoreRefPath() string {
+	return CartCollection + item.CartId + ItemCollection + item.Id
+}
+
 // AsPBCartItem returns the protocol buffer representation of this cart item.
 func (item *ShoppingCartItem) AsPBCartItem() *pbcart.CartItem {
 	return &pbcart.CartItem{
@@ -213,11 +218,6 @@ func ShoppingCartItemFromPB(pbItem *pbcart.CartItem) *ShoppingCartItem {
 		Quantity:    pbItem.Quantity,
 		UnitPrice:   types.MoneyFromPB(pbItem.UnitPrice),
 	}
-}
-
-// StoreRefPath returns the string representation of the document reference path for this ShoppingCartItem.
-func (item *ShoppingCartItem) StoreRefPath() string {
-	return CartCollection + item.CartId + ItemCollection + item.Id
 }
 
 // DeliveryAddressPath returns the string representation of the document reference path for the one and only

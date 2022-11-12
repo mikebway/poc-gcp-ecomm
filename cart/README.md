@@ -13,6 +13,7 @@ The current implementation is very basic, far less than MVP level. Still to expl
 
 * Authorization and access control
 * Transactions
+* Specifying preconditions
 * Use of queries to retrieve multiple Firestore documents in a single roundtrip
 * CDC triggering of EventArc events, Cloud Tasks, or other GCP capabilities 
 * gRPC field masking to select fields to be returned

@@ -1,5 +1,7 @@
 # Order Datastore POC
 
+**TIP:** Use the table of contents dropdown menu located to the left 
+
 ```diff
 - UNDER CONSTRUCTION
 -
@@ -144,6 +146,7 @@ help        List of available commands
 build       Build all the project components (invoking gcloud build for each service/function)
 deploy      Deploy all project components to Google Cloud
 test        Compile code and run unit tests locally on all components that support them
+firestore   Run the Firestore emulator
 protobuf    Compile the protocol buffer / gRPC schema files
 ```
 
@@ -153,4 +156,13 @@ of any of the module and service child directories and run the module specific `
 find there:
 
 * [The gRPC Cart Microservice](cart)
+
+## Unit Testing
+
+Many of the unit tests require that a local instance of the Firestore emulator be running. That is the case
+whether using `make test`, indirectly as a dependency of `make build` or `make deploy`, or from within an
+IDE.
+
+The easiest way to achieve this is to use `make firestore`; this will ensure that the Firestore emulator
+is spun up for the correct Google Cloud Project ID to listen to the port expected by the unit test code. 
 

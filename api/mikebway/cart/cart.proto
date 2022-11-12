@@ -43,7 +43,7 @@ message ShoppingCart {
 enum ShoppingCartStatus {
   SCS_UNSPECIFIED = 0;
   SCS_OPEN = 1;
-  SCS_ORDER_SUBMITTED = 2;
+  SCS_CHECKED_OUT = 2;
   SCS_ABANDONED_BY_USER = 3;
   SCS_ABANDONED_BY_TIMEOUT = 4;
 }
