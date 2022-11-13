@@ -36,15 +36,15 @@ const (
 	addrRegionCode = "GB"
 
 	// Define the cart item fields for our mock cart item
-	cartItemPriceCurrency = "USD"
-	cartItemProductCode1  = "gold_yoyo"
-	cartItemQuantity1     = 3
-	cartItemPriceUnits1   = 1_651
-	cartItemPriceNanos1   = 940_000_000
-	cartItemProductCode2  = "plastic_yoyo"
-	cartItemQuantity2     = 13
-	cartItemPriceUnits2   = 1
-	cartItemPriceNanos2   = 990_000_000
+	cartItemPriceCurrency       = "USD"
+	cartItemProductCode1        = "gold_yoyo"
+	cartItemQuantity1     int32 = 3
+	cartItemPriceUnits1   int64 = 1_651
+	cartItemPriceNanos1   int32 = 940_000_000
+	cartItemProductCode2        = "plastic_yoyo"
+	cartItemQuantity2     int32 = 13
+	cartItemPriceUnits2   int64 = 1
+	cartItemPriceNanos2   int32 = 990_000_000
 )
 
 var (
@@ -379,11 +379,11 @@ func TestAddItemSuccess(t *testing.T) {
 	// Verify both items in the second response
 	validateCartItem1(req, responseItem1, "second")
 	req.Equal(cartItemProductCode2, responseItem2.ProductCode, "returned cart should have contained %s", cartItemProductCode2)
-	req.Equal(cartItemQuantity1, responseItem2.Quantity, "returned cart had the wrong quantity of %s", cartItemProductCode2)
+	req.Equal(cartItemQuantity2, responseItem2.Quantity, "returned cart had the wrong quantity of %s", cartItemProductCode2)
 	req.NotNil(responseItem2.UnitPrice, "returned cart had no price for %s", cartItemProductCode2)
 	req.Equal(cartItemPriceCurrency, responseItem2.UnitPrice.CurrencyCode, "returned cart the wrong currency code for %s", cartItemProductCode2)
-	req.Equal(cartItemPriceUnits1, responseItem2.UnitPrice.Units, "returned cart had the wrong unit dollars for %s", cartItemProductCode2)
-	req.Equal(cartItemPriceNanos1, responseItem2.UnitPrice.Nanos, "returned cart had the wrong unit cents for %s", cartItemProductCode2)
+	req.Equal(cartItemPriceUnits2, responseItem2.UnitPrice.Units, "returned cart had the wrong unit dollars for %s", cartItemProductCode2)
+	req.Equal(cartItemPriceNanos2, responseItem2.UnitPrice.Nanos, "returned cart had the wrong unit cents for %s", cartItemProductCode2)
 }
 
 // validateCartItem1 is used by TestAddItemSuccess to check the first addition of cartItemProductCode1 is present and

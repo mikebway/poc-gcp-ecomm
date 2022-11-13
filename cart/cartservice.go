@@ -9,6 +9,7 @@ import (
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	"go.uber.org/zap"
+	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"time"
@@ -33,76 +34,11 @@ type CartService struct {
 	// dsProxy is used to allow unit tests to intercept firestore.DocumentSnapshot function calls
 	// and insert errors etc. into the responses.
 	dsProxy DocumentSnapshotProxy
-}
 
-// DocumentRefProxy defines the interface for a swappable junction that will allow us to maximize unit test coverage
-// by intercepting calls to firestore.DocumentRef methods and having them return mock errors. The default
-// production implementation of the interface will add a couple of nanoseconds of delay to normal operation but that
-// extra test coverage is worth the price.
-//
-// See https://pkg.go.dev/cloud.google.com/go/firestore#DocumentRef
-type DocumentRefProxy interface {
-	Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
-	Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error)
-	Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
-	Delete(doc *firestore.DocumentRef, ctx context.Context) (*firestore.WriteResult, error)
-}
-
-// DocumentSnapshotProxy defines the interface for a swappable junction that will allow us to maximize unit test
-// coverage by intercepting calls to firestore.DocumentSnapshot methods and having them return mock errors. The
-// default production implementation of the interface will add a couple of nanoseconds of delay to normal
-// operation but that extra test coverage is worth the price.
-//
-// See https://pkg.go.dev/cloud.google.com/go/firestore#DocumentSnapshot
-type DocumentSnapshotProxy interface {
-	DataTo(snap *firestore.DocumentSnapshot, target interface{}) error
-}
-
-// DocRefProxy is the production (i.e. non- unit test) implementation of the DocumentRefProxy interface.
-// NewCartService configures it as the default in new CartService structure constructions.
-type DocRefProxy struct {
-	DocumentRefProxy
-}
-
-// Create is a direct pass through to the firestore.DocumentRef Create function. We use this rather than
-// calling the firestore.DocumentRef function directly so that we can replace this implementation with
-// one that allows errors to be inserted into the response when executing uni tests.
-func (p *DocRefProxy) Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
-	return doc.Create(ctx, data)
-}
-
-// Get is a direct pass through to the firestore.DocumentRef Get function. We use this rather than
-// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
-// allows errors to be inserted into the response when executing uni tests.
-func (p *DocRefProxy) Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error) {
-	return doc.Get(ctx)
-}
-
-// Set is a direct pass through to the firestore.DocumentRef Set function. We use this rather than
-// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
-// allows errors to be inserted into the response when executing uni tests.
-func (p *DocRefProxy) Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
-	return doc.Set(ctx, data)
-}
-
-// Delete is a direct pass through to the firestore.DocumentRef Delete function. We use this rather than
-// calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
-// allows errors to be inserted into the response when executing uni tests.
-func (p *DocRefProxy) Delete(doc *firestore.DocumentRef, ctx context.Context) (*firestore.WriteResult, error) {
-	return doc.Delete(ctx)
-}
-
-// DocSnapProxy is the production (i.e. non- unit test) implementation of the DocumentSnapshotProxy interface.
-// NewCartService configures it as the default in new CartService structure constructions.
-type DocSnapProxy struct {
-	DocumentRefProxy
-}
-
-// DataTo is a direct pass through to the firestore.DocumentSnapshot DataTo function. We use this rather than
-// calling the firestore.DocumentSnapshot function directly so that we can replace this implementation with
-// one that allows errors to be inserted into the response when executing uni tests.
-func (p *DocSnapProxy) DataTo(snap *firestore.DocumentSnapshot, target interface{}) error {
-	return snap.DataTo(target)
+	// itemsGetterProxy is used to obtain an ItemsCollectionProxy for a given cart. Unit tests may
+	// substitute an alternative implementation this interface in order to be able to insert errors etc.
+	// into the responses of the ItemsCollectionProxy that the ItemCollectionGetterProxy returns.
+	itemsGetterProxy ItemCollectionGetterProxy
 }
 
 // NewCartService is a factory method returning an instance of our social graph service.
@@ -130,6 +66,11 @@ func NewCartService() (*CartService, error) {
 	// Check that we obtained a firestore client successfully
 	if err != nil {
 		return nil, fmt.Errorf("could not obtain firestore client: %w", err)
+	}
+
+	// Make the firestore client available to the cart item getter proxy
+	svc.itemsGetterProxy = &ItemCollGetterProxy{
+		fsClient: svc.fsClient,
 	}
 
 	// All done - return the populated service instance
@@ -219,22 +160,27 @@ func (cs *CartService) getShoppingCart(ctx context.Context, cartId string) (*pbc
 	}
 
 	// Get the delivery address if one has been set
-	deliveryAddress, err := cs.getDeliveryAddress(ctx, cartId)
+	storedCart.DeliveryAddress, err = cs.getDeliveryAddress(ctx, storedCart)
 	if err != nil {
 		return nil, err
 	}
-	storedCart.DeliveryAddress = deliveryAddress
+
+	// Get the cart items
+	storedCart.CartItems, err = cs.getCartItems(ctx, storedCart)
+	if err != nil {
+		return nil, err
+	}
 
 	// All good, log our joy and return the protocol buffer transliteration of our retrieved cart
 	return storedCart.AsPBShoppingCart(), nil
 }
 
-// getDeliveryAddress returns the delivery address for the give cart in its package internal structure form
+// getDeliveryAddress returns the delivery address for the given cart in its package internal structure form
 // or nil if no address was found or an error occurred.
-func (cs *CartService) getDeliveryAddress(ctx context.Context, cartId string) (*types.PostalAddress, error) {
+func (cs *CartService) getDeliveryAddress(ctx context.Context, cart *schema.ShoppingCart) (*types.PostalAddress, error) {
 
 	// Ask the firestore client for the delivery address (if there is one)
-	ref := cs.fsClient.Doc(schema.DeliveryAddressPath(cartId))
+	ref := cs.fsClient.Doc(cart.DeliveryAddressPath())
 	snap, err := cs.drProxy.Get(ref, ctx)
 	if err == nil {
 
@@ -242,7 +188,7 @@ func (cs *CartService) getDeliveryAddress(ctx context.Context, cartId string) (*
 		deliveryAddress := &types.PostalAddress{}
 		err = cs.dsProxy.DataTo(snap, deliveryAddress)
 		if err != nil {
-			return nil, fmt.Errorf("failed to unmarshal delivery addreess snapshot with cart ID %s: %w", cartId, err)
+			return nil, fmt.Errorf("failed to unmarshal delivery addreess snapshot with cart ID %s: %w", cart.Id, err)
 		}
 
 		// Stuff the delivery address into the parent cart structure
@@ -257,7 +203,45 @@ func (cs *CartService) getDeliveryAddress(ctx context.Context, cartId string) (*
 	}
 
 	// We experienced a significant error, report that back to the caller
-	return nil, fmt.Errorf("failed to retrieve delivery address for cart with ID %s: %w", cartId, err)
+	return nil, fmt.Errorf("failed to retrieve delivery address for cart with ID %s: %w", cart.Id, err)
+}
+
+// getCartItems returns the collection of cart items for the given cart in their package internal structure form.
+// The returned slice may be empty if the cart does not currently contain any selected items.
+func (cs *CartService) getCartItems(ctx context.Context, cart *schema.ShoppingCart) ([]*schema.ShoppingCartItem, error) {
+
+	// Build our result set here
+	var items []*schema.ShoppingCartItem
+
+	// Obtain an iterator that can walk the cart's item collection's documents. Under the hood, a "GetAll"
+	// operation retrieves all the item documents in a single round trip
+	docs := cs.itemsGetterProxy.Items(cart).GetAll(ctx)
+
+	// Close the iterator when we are done with it regardless of whether we are successful or not
+	defer docs.Stop()
+
+	// Do the iteration: gather a slice containing all the internal package representations of the cart items
+	for {
+		// Get the next document, if there is one
+		item := &schema.ShoppingCartItem{}
+		err := docs.Next(item)
+		if err != nil {
+
+			// We are either out of documents or have a real error
+			if err != iterator.Done {
+				return nil, fmt.Errorf("failed to retrieve cart item for cart ID %s: %w", cart.Id, err)
+			}
+
+			//  For better or worse, we are done with this collection
+			break
+		}
+
+		// Add this one to our result set and loop around for the next
+		items = append(items, item)
+	}
+
+	// Against all odds, we made it through to a happy result
+	return items, nil
 }
 
 // SetDeliveryAddress adds (or replaces) the delivery address to be used for physical cart items.
@@ -267,9 +251,12 @@ func (cs *CartService) SetDeliveryAddress(ctx context.Context, req *pbcart.SetDe
 	l := zap.L()
 	l.Info("setting delivery address", zap.String("CartId", req.CartId))
 
-	// Store the person that requested the cart be created as a child of the cart in the firestore
+	// Form a skeleton cart representation that we can query for the delivery address path
+	cart := &schema.ShoppingCart{Id: req.CartId}
+
+	// Store the delivery address as a child of the cart in the firestore
 	deliveryAddress := types.PostalAddressFromPB(req.DeliveryAddress)
-	ref := cs.fsClient.Doc(schema.DeliveryAddressPath(req.CartId))
+	ref := cs.fsClient.Doc(cart.DeliveryAddressPath())
 	_, err := cs.drProxy.Set(ref, ctx, deliveryAddress)
 	if err != nil {
 		err = fmt.Errorf("failed setting delivery address to firestore for cart: %w", err)

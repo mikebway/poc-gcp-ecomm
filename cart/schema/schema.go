@@ -15,14 +15,14 @@ const (
 	CartCollection = "carts/"
 
 	// ItemCollection names the sub-collection of an individual cart in which shopping cart item documents are stored
-	ItemCollection = "/items/"
+	ItemCollection = "/items"
 
 	// AddressCollection names the sub-collection of an individual cart in which postal address documents are stored
-	AddressCollection = "/addresses/"
+	AddressCollection = "/addresses"
 
 	// DeliverAddressDoc names the single delivery address document that may bee associated with the AddressCollection
 	// of a single shopping cart.
-	DeliverAddressDoc = "delivery"
+	DeliverAddressDoc = "/delivery"
 )
 
 // ShoppingCart collects the cart items that a shopper is considering purchasing
@@ -76,6 +76,18 @@ const (
 // StoreRefPath returns the string representation of the document reference path for this ShoppingCart.
 func (c *ShoppingCart) StoreRefPath() string {
 	return CartCollection + c.Id
+}
+
+// DeliveryAddressPath returns the string representation of the document reference path for the one and only
+// delivery address that can be associated with ths ShoppingCart.
+func (c *ShoppingCart) DeliveryAddressPath() string {
+	return CartCollection + c.Id + AddressCollection + DeliverAddressDoc
+}
+
+// ItemCollectionPath returns the string representation of the collection reference path under which
+// cart items associated with ths ShoppingCart may be stored
+func (c *ShoppingCart) ItemCollectionPath() string {
+	return CartCollection + c.Id + ItemCollection
 }
 
 // AsPBShoppingCart returns the protocol buffer representation of this cart.
@@ -194,7 +206,7 @@ type ShoppingCartItem struct {
 
 // StoreRefPath returns the string representation of the document reference path for this ShoppingCartItem.
 func (item *ShoppingCartItem) StoreRefPath() string {
-	return CartCollection + item.CartId + ItemCollection + item.Id
+	return CartCollection + item.CartId + ItemCollection + "/" + item.Id
 }
 
 // AsPBCartItem returns the protocol buffer representation of this cart item.
@@ -218,10 +230,4 @@ func ShoppingCartItemFromPB(pbItem *pbcart.CartItem) *ShoppingCartItem {
 		Quantity:    pbItem.Quantity,
 		UnitPrice:   types.MoneyFromPB(pbItem.UnitPrice),
 	}
-}
-
-// DeliveryAddressPath returns the string representation of the document reference path for the one and only
-// delivery address, if any, associated with a shopping cart.
-func DeliveryAddressPath(cartId string) string {
-	return CartCollection + cartId + AddressCollection + DeliverAddressDoc
 }
