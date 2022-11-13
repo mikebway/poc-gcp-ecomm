@@ -349,6 +349,7 @@ func (cs *CartService) RemoveItemFromShoppingCart(ctx context.Context, req *pbca
 // CheckoutShoppingCart submits the order / checkout the shopping cart
 //
 // TODO: consider more informative structured error reporting in the response rather than as an HTTP / protocol error?
+// TODO: Should not be able to check out cart with nothing in it and no delivery address (although delivery address might more normally be collected during checkout)
 func (cs *CartService) CheckoutShoppingCart(ctx context.Context, req *pbcart.CheckoutShoppingCartRequest) (*pbcart.CheckoutShoppingCartResponse, error) {
 
 	// Obtain a shortcut handle on our globally configured logger then log what we are about to do
@@ -389,7 +390,7 @@ func (cs *CartService) AbandonShoppingCart(ctx context.Context, req *pbcart.Aban
 func (cs *CartService) closeCart(ctx context.Context, cartId string, closedState schema.CartStatus) (*pbcart.ShoppingCart, error) {
 
 	// Ask the firestore client for the specified cart
-	storedCart := schema.ShoppingCart{Id: cartId}
+	storedCart := &schema.ShoppingCart{Id: cartId}
 	ref := cs.fsClient.Doc(storedCart.StoreRefPath())
 	snap, err := cs.drProxy.Get(ref, ctx)
 	if err != nil {
@@ -417,7 +418,7 @@ func (cs *CartService) closeCart(ctx context.Context, cartId string, closedState
 	storedCart.Status = closedState
 	_, err = cs.drProxy.Set(ref, ctx, storedCart)
 	if err != nil {
-		err = fmt.Errorf("failed putting updated cart status to datastore: %w", err)
+		err = fmt.Errorf("failed putting updated cart status to datastore with ID %s: %w", cartId, err)
 		zap.L().Error(err.Error(), zap.String("CartId", storedCart.Id))
 		return nil, err
 	}

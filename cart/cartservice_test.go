@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	pbtypes "github.com/mikebway/poc-gcp-ecomm/pb/types"
 	"github.com/stretchr/testify/require"
@@ -374,14 +375,15 @@ func addFirstItemToCart(t *testing.T) (*require.Assertions, context.Context, *Ca
 	response, err := service.AddItemToShoppingCart(ctx, &pbcart.AddItemToShoppingCartRequest{CartId: cart.Id, Item: item})
 	req.Nil(err, "should not have seen an error adding %s to Rupert's cart: %v", cartItemProductCode1, err)
 	req.NotNil(response, "should have obtained a response after adding %s Rupert's cart", cartItemProductCode1)
-	req.NotNil(response.GetCart(), "response should have contained a cart after adding %s", cartItemProductCode1)
-	responseItems := response.GetCart().GetCartItems()
+	responseCart := response.GetCart()
+	req.NotNil(responseCart, "response should have contained a cart after adding %s", cartItemProductCode1)
+	responseItems := responseCart.GetCartItems()
 	req.Equal(1, len(responseItems), "returned cart should have contained one item")
 	responseItem1 := responseItems[0]
 	validateCartItem1(req, responseItem1, "first")
 
 	// Pass everything back that the caller needs to performa additional testing
-	return req, ctx, service, cart, responseItem1
+	return req, ctx, service, responseCart, responseItem1
 }
 
 // validateCartItem1 is used by TestAddItemSuccess to check the first addition of cartItemProductCode1 is present and
@@ -482,8 +484,85 @@ func TestRemoveItemResponseFailure(t *testing.T) {
 	req.Nil(removeResp, "should have not obtained a response removing an item to Rupert's cart")
 }
 
-func TestCheckoutSuccess(t *testing.T) {}
+// TestCheckoutSuccess examines both the successful checking out of a cart and the special case of trying
+// to check the same cart out a second time (which should fail).
+func TestCheckoutSuccess(t *testing.T) {
 
+	// Register a cart with a single item in it
+	req, ctx, service, cart, _ := addFirstItemToCart(t)
+
+	// Check the cart out and confirm all went well
+	response, err := service.CheckoutShoppingCart(ctx, &pbcart.CheckoutShoppingCartRequest{CartId: cart.Id})
+	req.Nil(err, "failed to check cart out: %v", err)
+	req.NotNil(response, "should have obtained a response after checking cart out")
+	responseCart := response.GetCart()
+	req.NotNil(response.GetCart(), "response should have contained the final cart state")
+	req.Equal(cart.Id, responseCart.Id, "response cart ID did not match the cart we checked out")
+	req.Equal(pbcart.ShoppingCartStatus_SCS_CHECKED_OUT, responseCart.Status, "response cart does not have the checked out status")
+
+	// Try to check the cart out a second time
+	response, err = service.CheckoutShoppingCart(ctx, &pbcart.CheckoutShoppingCartRequest{CartId: cart.Id})
+	req.NotNil(err, "should have seen an error checking out Rupert's cart a second time")
+	req.Contains(err.Error(), "cannot change status of cart that is not open: cart ID="+cart.Id, "should have seen cannot check out a closed cart error")
+	req.Nil(response, "should have not obtained a response after failing to change cart status")
+}
+
+// TestCheckoutCartMissing examines what happens if the caller tries to check out a cart that does not exist.
+func TestCheckoutCartMissing(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Initialize our target cart service
+	service, err := NewCartService()
+	req.Nil(err, "failed to obtain cart service: %v", err)
+
+	// Form the ID of a cart that we know cannot exist
+	cartId := uuid.New().String()
+
+	// Check the cart out and confirm all went well
+	ctx := context.Background()
+	response, err := service.CheckoutShoppingCart(ctx, &pbcart.CheckoutShoppingCartRequest{CartId: cartId})
+	req.NotNil(err, "should have seen an error checking out a non-existent cart")
+	req.Contains(err.Error(), "failed to retrieve cart snapshot with ID "+cartId, "should have seen failed to load cart error")
+	req.Nil(response, "should have not obtained a response after failing to change non-existent cart status")
+}
+
+// TestCheckoutOriginalCartUnmarshalFailure looks at what happens if the target cart exists but cannot be loaded to
+// see what its current state is.
+func TestCheckoutOriginalCartUnmarshalFailure(t *testing.T) {
+
+	// Register a cart with a single item in it
+	req, ctx, service, cart, _ := addFirstItemToCart(t)
+
+	// Modify the cart service to return an error the first time the code attempts to unmarshal a document snapshot
+	service.dsProxy = &UTDocSnapProxy{err: mockError, allowCount: 0}
+
+	// Check the cart out and confirm all went well
+	response, err := service.CheckoutShoppingCart(ctx, &pbcart.CheckoutShoppingCartRequest{CartId: cart.Id})
+	req.NotNil(err, "should have seen an error checking out a corrupt cart")
+	req.Contains(err.Error(), "failed to unmarshal cart snapshot with ID "+cart.Id, "should have seen an unmarshalling error")
+	req.Nil(response, "should have not obtained a response after failing to unmarshall the original cart")
+}
+
+// TestCheckoutFailure looks at what happens if Firestore is unable to set the checked out status on the target cart.
+func TestCheckoutFailure(t *testing.T) {
+
+	// Register a cart with a single item in it
+	req, ctx, service, cart, _ := addFirstItemToCart(t)
+
+	// Modify the cart service to return an error the second time we try to use a document reference proxy
+	service.drProxy = &UTDocRefProxy{err: mockError, allowCount: 1}
+
+	// Check the cart out and confirm all went well
+	response, err := service.CheckoutShoppingCart(ctx, &pbcart.CheckoutShoppingCartRequest{CartId: cart.Id})
+	req.NotNil(err, "should have seen an error checking out a corrupt cart")
+	req.Contains(err.Error(), "failed putting updated cart status to datastore with ID "+cart.Id, "should have seen an document set error")
+	req.Nil(response, "should have not obtained a response after failing to set the checked out status")
+}
+
+// commonTestSetup helps us to be a little DRY (Don't Repeat Yourself) in this file, doing the steps that more
+// than have the unit test functions in here need to do before going on to anything else.
 func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *CartService, *pbcart.ShoppingCart) {
 
 	// Avoid having to pass t in to every assertion
@@ -495,6 +574,29 @@ func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *CartS
 
 	// return everything the caller needs to perform their tests
 	return req, ctx, service, cart
+}
+
+// TestAbandonSuccess examines both the successful abandoning of a cart and the special case of trying
+// to abandon the same cart out a second time (which should fail).
+func TestAbandonSuccess(t *testing.T) {
+
+	// Register a cart with a single item in it
+	req, ctx, service, cart, _ := addFirstItemToCart(t)
+
+	// Check the cart out and confirm all went well
+	response, err := service.AbandonShoppingCart(ctx, &pbcart.AbandonShoppingCartRequest{CartId: cart.Id})
+	req.Nil(err, "failed to abandon cart: %v", err)
+	req.NotNil(response, "should have obtained a response after abandoning the cart")
+	responseCart := response.GetCart()
+	req.NotNil(response.GetCart(), "response should have contained the final cart state")
+	req.Equal(cart.Id, responseCart.Id, "response cart ID did not match the cart we abandoned")
+	req.Equal(pbcart.ShoppingCartStatus_SCS_ABANDONED_BY_USER, responseCart.Status, "response cart does not have the abandoned status")
+
+	// Try to check the cart out a second time
+	response, err = service.AbandonShoppingCart(ctx, &pbcart.AbandonShoppingCartRequest{CartId: cart.Id})
+	req.NotNil(err, "should have seen an error abandoning out Rupert's cart a second time")
+	req.Contains(err.Error(), "cannot change status of cart that is not open: cart ID="+cart.Id, "should have seen cannot check out a closed cart error")
+	req.Nil(response, "should have not obtained a response after failing to change cart status")
 }
 
 // storeMockCart establishes and caches a cart service the first time it is called and and uses that to create
