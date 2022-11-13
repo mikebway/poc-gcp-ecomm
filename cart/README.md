@@ -11,6 +11,7 @@ actual online business but as a test bed to explore:
 
 The current implementation is very basic, far less than MVP level. Still to explore are:
 
+* Figure out a better way to get high unit test coverage on Firestore access code
 * Authorization and access control
 * Transactions
 * Specifying preconditions

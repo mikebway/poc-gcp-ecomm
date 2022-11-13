@@ -229,7 +229,7 @@ func (cs *CartService) getCartItems(ctx context.Context, cart *schema.ShoppingCa
 
 			// We are either out of documents or have a real error
 			if err != iterator.Done {
-				return nil, fmt.Errorf("failed to retrieve cart item for cart ID %s: %w", cart.Id, err)
+				return nil, fmt.Errorf("failed to retrieve cart item for cart with ID %s: %w", cart.Id, err)
 			}
 
 			//  For better or worse, we are done with this collection

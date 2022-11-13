@@ -67,7 +67,7 @@ type ItemCollGetterProxy struct {
 	fsClient *firestore.Client
 }
 
-// Items returns a collection reference proxy that allows the shoping cart items of the given cart
+// Items returns a collection reference proxy that allows the shopping cart items of the given cart
 // to be retrieved from Firestore.
 func (p *ItemCollGetterProxy) Items(cart *schema.ShoppingCart) ItemsCollectionProxy {
 	return &ItemsCollProxy{
