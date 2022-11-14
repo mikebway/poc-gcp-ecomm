@@ -77,18 +77,19 @@ func TestFirestorePaths(t *testing.T) {
 
 	// Get the firestore path for the shopping cart and confirm that it looks as we expect
 	cartPath := cart.StoreRefPath()
-	req.NotEmpty(cartPath, "should have obtained a shopping cart firestore path")
 	req.Equal("carts/d1cecab3-5bc0-43d4-aef1-99ad69794313", cartPath, "cart path content does not match expected value")
 
 	// Get the firestore path for the delivery address of the shopping cart and confirm that it looks as we expect
-	deliveryAddressPath := DeliveryAddressPath(cart.Id)
-	req.NotEmpty(deliveryAddressPath, "should have obtained a delivery address firestore path")
+	deliveryAddressPath := cart.DeliveryAddressPath()
 	req.Equal("carts/d1cecab3-5bc0-43d4-aef1-99ad69794313/addresses/delivery", deliveryAddressPath, "delivery address path content does not match expected value")
+
+	// Get the Firestore collect path that will contain all the cart item documents
+	itemCollectionPath := cart.ItemCollectionPath()
+	req.Equal("carts/d1cecab3-5bc0-43d4-aef1-99ad69794313/items", itemCollectionPath, "delivery address path content does not match expected value")
 
 	// Get the firestore path for a cart item and confirm that it looks as we expect
 	cartItem := buildMockCartItems()[0]
 	cartItemPath := cartItem.StoreRefPath()
-	req.NotEmpty(cartItemPath, "should have obtained a cart item firestore path")
 	req.Equal("carts/d1cecab3-5bc0-43d4-aef1-99ad69794313/items/54f34cb9-fea6-4786-a475-cebd95d93742", cartItemPath, "cart item path content does not match expected value")
 }
 
@@ -110,7 +111,7 @@ func TestFullConversion(t *testing.T) {
 	req.Equal(shoppingCartId, pbCart.Id, "cart IDs did not match")
 	req.Equal(shoppingCartCreationTime, pbCart.CreationTime.AsTime(), "cart creation times did not match")
 	req.Equal(shoppingCartClosedTime, pbCart.ClosedTime.AsTime(), "cart closure times did not match")
-	req.Equal(int32(CsOrderSubmitted), int32(pbCart.Status), "cart status did not match")
+	req.Equal(int32(CsCheckedOut), int32(pbCart.Status), "cart status did not match")
 	req.NotNil(pbCart.DeliveryAddress, "should have found a delivery address")
 	req.Equal(addrPostalCode, pbCart.DeliveryAddress.PostalCode, "delivery address postal code did not match")
 	req.Equal(len(srcCart.CartItems), len(pbCart.CartItems), "item count did not match")
@@ -178,7 +179,7 @@ func buildMockCart() *ShoppingCart {
 		Id:              shoppingCartId,
 		CreationTime:    shoppingCartCreationTime,
 		ClosedTime:      shoppingCartClosedTime,
-		Status:          CsOrderSubmitted,
+		Status:          CsCheckedOut,
 		Shopper:         buildMockShopper(),
 		DeliveryAddress: buildMockDeliveryAddress(),
 		CartItems:       buildMockCartItems(),
