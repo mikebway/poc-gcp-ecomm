@@ -1,5 +1,5 @@
 // This is a modified work derived from original source code copyright 2021 Google LLC. See
-// https://github.com/googleapis/googleapis/blob/master/google/type/postal_address.proto.
+// https://github.com/googleapis/googleapis/blob/master/google/type/money.proto.
 //
 // Those portions of this work that are copied from the Google original are subject to the
 // following copyright:

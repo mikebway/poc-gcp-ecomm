@@ -416,6 +416,7 @@ func (cs *CartService) closeCart(ctx context.Context, cartId string, closedState
 
 	// Change the status and write the cart back to teh store
 	storedCart.Status = closedState
+	storedCart.ClosedTime = time.Now()
 	_, err = cs.drProxy.Set(ref, ctx, storedCart)
 	if err != nil {
 		err = fmt.Errorf("failed putting updated cart status to datastore with ID %s: %w", cartId, err)
