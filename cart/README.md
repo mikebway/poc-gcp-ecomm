@@ -120,8 +120,8 @@ it impossible for code to copying the structure contents between instances. The 
 
 Both the check out and abandon operations take the same minimal inout of just the cart ID.
 
-Once the status the cart has been so modified, it cannot be changed again. In theory, you should be
-able to add or remove cart items after this point but, at the time of writing, there are no checks
+Once the status the cart has been so modified, it cannot be changed again. In theory, you should **not**
+be able to add or remove cart items after this point but, at the time of writing, there are no checks
 in place to prevent that.
 
 ```json
