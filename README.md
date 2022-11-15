@@ -157,12 +157,17 @@ find there:
 
 * [The gRPC Cart Microservice](cart)
 
-## Unit Testing
+## Unit Testing With the Firestore Emulator
 
 Many of the unit tests require that a local instance of the Firestore emulator be running. That is the case
 whether using `make test`, indirectly as a dependency of `make build` or `make deploy`, or from within an
 IDE.
 
-The easiest way to achieve this is to use `make firestore`; this will ensure that the Firestore emulator
-is spun up for the correct Google Cloud Project ID to listen to the port expected by the unit test code. 
+The easiest way to achieve this is to use `make firestore` in a second terminal window. This will ensure 
+that the Firestore emulator is spun up for the correct Google Cloud Project ID to listen to the port expected
+by the unit test code.
+
+Unfortunately, running under `make`, the Firestore emulator cannot be stopped with simply by tapping Ctrl+C
+a couple of times. Executing `make stop-firestore` in your other terminal window will take care of that.
+
 
