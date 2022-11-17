@@ -1,4 +1,5 @@
-package main
+// Package service contains the gRPC Shopping Cart microservice implementation.
+package service
 
 import (
 	"cloud.google.com/go/firestore"
@@ -17,6 +18,12 @@ import (
 
 const (
 	ProjectId = "poc-gcp-ecomm"
+)
+
+var (
+	// UnitTestNewCartServiceError should be returned by NewCartService if we are running unit tests
+	// and unitTestNewCartServiceError is not nil.
+	UnitTestNewCartServiceError error
 )
 
 // CartService is a structure class with methods that implements the cart.CartAPIServer gRPC API
@@ -54,13 +61,13 @@ func NewCartService() (*CartService, error) {
 	// Obtain a firestore client and stuff that in the service instance
 	ctx := context.Background()
 	var err error
-	if unitTestNewCartServiceError == nil {
+	if UnitTestNewCartServiceError == nil {
 		// Set the Firestore client if we are not unit testing an error situation.
 		svc.fsClient, err = firestore.NewClient(ctx, ProjectId)
 
 	} else {
 		// We are unit testing and required to report an error
-		err = unitTestNewCartServiceError
+		err = UnitTestNewCartServiceError
 	}
 
 	// Check that we obtained a firestore client successfully

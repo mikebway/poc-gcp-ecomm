@@ -172,7 +172,7 @@ func TestMinimumConversion(t *testing.T) {
 	req.Equal(0, len(finalCart.CartItems), "final item count should be zero")
 }
 
-// buildMockShoppingCart returns a types.ShoppingCart structure populated with a shopper that can be used to
+// buildMockCart returns a types.ShoppingCart structure populated with a shopper that can be used to
 // test storing new shopping carts in our tests.
 func buildMockCart() *ShoppingCart {
 	return &ShoppingCart{

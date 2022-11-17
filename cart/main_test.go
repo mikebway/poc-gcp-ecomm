@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"fmt"
+	svc "github.com/mikebway/poc-gcp-ecomm/cart/service"
+	"github.com/mikebway/poc-gcp-ecomm/util"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
 	"net"
 	"os"
@@ -21,7 +19,7 @@ func resetEnvironment() {
 	_ = os.Setenv(EnvGRPCPort, "")
 
 	// Clear the request for the NewCartService to return a mock error
-	unitTestNewCartServiceError = nil
+	svc.UnitTestNewCartServiceError = nil
 }
 
 // TestMainFailure is the only test we can run against the main() function as we deliberately force a failure
@@ -37,10 +35,10 @@ func TestMainFailure(t *testing.T) {
 
 	// Have the NewCartService call return an error
 	const errorMsg = "TestMainFailure mock error"
-	unitTestNewCartServiceError = fmt.Errorf(errorMsg)
+	svc.UnitTestNewCartServiceError = fmt.Errorf(errorMsg)
 
 	// Wrap a call to main() to capture its log output
-	logged := CaptureLogging(func() {
+	logged := util.CaptureLogging(func() {
 		main()
 	})
 
@@ -67,7 +65,7 @@ func TestDefaultInitialization(t *testing.T) {
 	var service *grpc.Server
 	var listener net.Listener
 	var err error
-	logged := CaptureLogging(func() {
+	logged := util.CaptureLogging(func() {
 		service, listener, err = initializeService()
 	})
 
@@ -104,7 +102,7 @@ func TestCustomPortInitialization(t *testing.T) {
 	var service *grpc.Server
 	var listener net.Listener
 	var err error
-	logged := CaptureLogging(func() {
+	logged := util.CaptureLogging(func() {
 		service, listener, err = initializeService()
 	})
 
@@ -138,11 +136,11 @@ func TestInvalidPortInitialization(t *testing.T) {
 	// Configure a non-standard TCP port number
 	_ = os.Setenv(EnvGRPCPort, "Gandalf")
 
-	// Initialize the service while capture it's log output
+	// Initialize the service while capturing its log output
 	var service *grpc.Server
 	var listener net.Listener
 	var err error
-	logged := CaptureLogging(func() {
+	logged := util.CaptureLogging(func() {
 		service, listener, err = initializeService()
 	})
 
@@ -177,13 +175,13 @@ func TestNoCartServiceInitialization(t *testing.T) {
 
 	// Have the NewCartService call return an error
 	const errorMsg = "TestNoCartServiceInitialization mock error"
-	unitTestNewCartServiceError = fmt.Errorf(errorMsg)
+	svc.UnitTestNewCartServiceError = fmt.Errorf(errorMsg)
 
 	// Initialize the service while capture it's log output
 	var service *grpc.Server
 	var listener net.Listener
 	var err error
-	logged := CaptureLogging(func() {
+	logged := util.CaptureLogging(func() {
 		service, listener, err = initializeService()
 	})
 
@@ -205,34 +203,4 @@ func TestNoCartServiceInitialization(t *testing.T) {
 	req.Contains(logged, errorMsg, "should have seen our mock error message in log")
 	req.NotNil(listener, "listener should have been returned")
 	req.Nil(service, "no gRPC service should have been returned")
-}
-
-// CaptureLogging allows unit tests to override the default Zap logger to capture the logging output that results
-// from execution of the supplied function. The captured log output is returned as a string after the default
-// logger has been restored.
-//
-// The supplied function parameter would typically be an inline function supplied by a unit test that needs to
-// evaluate the log output of some test subject to determine if the test passed or failed.
-func CaptureLogging(f func()) string {
-
-	// Configure a Zap logger to record to a buffer
-	var loggedBytes bytes.Buffer
-	encoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
-	writer := bufio.NewWriter(&loggedBytes)
-	capLogger := zap.New(zapcore.NewCore(encoder, zapcore.AddSync(writer), zapcore.DebugLevel))
-
-	// Set our capturing logger as the default logger, deferring the returned function to restore
-	// the original logger when this function exits
-	restoreOriginalLogger := zap.ReplaceGlobals(capLogger)
-	defer restoreOriginalLogger()
-
-	// Call the supplied function with our logger recording hat it has to say to teh world
-	f()
-
-	// Flush the log then return the buffer contents as string
-	err := writer.Flush()
-	if err != nil {
-		return fmt.Sprintf("FAILED TO FLUSH THE CAPTURED LOG: %v", err)
-	}
-	return loggedBytes.String()
 }

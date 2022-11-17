@@ -19,27 +19,11 @@ message Order {
   // The time at which cart checkout was completed and the order was submitted for payment
   google.protobuf.Timestamp submission_time = 2;
 
-  // OrderStatus describes the overall status of the order, summarizing or
-  // overriding the status of the individual order items.
-  OrderStatus order_status = 3;
-
   // The person who submitted the order
   Person ordered_by = 4;
 
   // The delivery address for the order
   PostalAddress delivery_address = 5;
-
-  // Order items is the list of one to many items that make up the order
-  repeated OrderItem order_items = 6;
-}
-
-// An enumeration of order item states
-enum OrderStatus {
-  OS_UNSPECIFIED = 0;
-  OS_PENDING = 1;
-  OS_COMPLETED = 2;
-  OS_CANCELED = 3;
-  OS_PARTIALLY_CANCELLED = 4;
 }
 
 // OrderItem represents a single entry in an order. An order will contain one
@@ -59,17 +43,4 @@ message OrderItem {
   // The unit price is the price that the customer was shown for a single item
   // when they selected the item for their cart
   google.type.Money unit_price = 4;
-
-  // The fulfillment state of the oder item as an enumerated value
-  OrderItemStatus status = 5;
 }
-
-// An enumeration of order item states
-enum OrderItemStatus {
-  OIS_UNSPECIFIED = 0;
-  OIS_PENDING = 1;
-  OIS_COMPLETED = 2;
-  OIS_REFUND_PENDING = 3;
-  OIS_REFUNDED = 4;
-}
-

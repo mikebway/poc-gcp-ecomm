@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	service2 "github.com/mikebway/poc-gcp-ecomm/cart/service"
 	"net"
 	"os"
 
@@ -20,19 +21,9 @@ const (
 	DefaultGRPCPort = "8080"
 )
 
-var (
-	// serviceLogger is statically initialized as the Zap logger to be used when the service is initialized.
-	// It may be overridden by unit tests wish to capture the logs and evaluate what they contain.
-	serviceLogger *zap.Logger
-
-	// unitTestNewCartServiceError should be returned by NewCartService if we are running unit tests
-	// and unitTestNewCartServiceError is not nil.
-	unitTestNewCartServiceError error
-)
-
 // init is the static initializer used to configure our local and global static variables.
 func init() {
-	serviceLogger, _ = zap.NewProduction()
+	serviceLogger, _ := zap.NewProduction()
 	zap.ReplaceGlobals(serviceLogger)
 }
 
@@ -74,7 +65,7 @@ func initializeService() (*grpc.Server, net.Listener, error) {
 	}
 
 	// Initialize our shopping cart service
-	service, err := NewCartService()
+	service, err := service2.NewCartService()
 	if err != nil {
 		// Log our discomfort
 		zap.L().Error("NewCartService error", zap.String("error", err.Error()))
