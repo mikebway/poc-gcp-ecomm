@@ -47,7 +47,7 @@ func init() {
 	shoppingCartClosedTime = t.GetTime()
 
 	// Firestore value times are closely but not exactly related to the shopping cart times
-	// We just make them a second apart here but in relaty it would be much closer.
+	// We just make them a second apart here but in reality it would be much closer.
 	firestoreValueCreateTime = shoppingCartCreationTime.Add(time.Second)
 	firestoreValueUpdateTime = shoppingCartClosedTime.Add(time.Second)
 }
@@ -67,7 +67,7 @@ func TestHandlerHappyPath(t *testing.T) {
 
 	// There should have been no errors and some straightforward log output
 	req.Nil(err, "no error was expected: %v", err)
-	req.Contains(logged, "cart document updated", "did not see happy path log message")
+	req.Contains(logged, "firestore event", "did not see happy path log message")
 	req.Contains(logged, event.Value.Name, "did not see cart document path in log message")
 }
 
