@@ -3,9 +3,9 @@ module github.com/mikebway/poc-gcp-ecomm/carttrigger
 go 1.19
 
 require (
-	github.com/mikebway/poc-gcp-ecomm/cart v0.0.0-20221118010412-55da4a704e6f
-	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20221118010412-55da4a704e6f
-	github.com/mikebway/poc-gcp-ecomm/util v0.0.0-20221118010412-55da4a704e6f
+	github.com/mikebway/poc-gcp-ecomm/cart v0.0.0-20221118040534-e4592368c106
+	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20221118040534-e4592368c106
+	github.com/mikebway/poc-gcp-ecomm/util v0.0.0-20221118040534-e4592368c106
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.23.0
 )

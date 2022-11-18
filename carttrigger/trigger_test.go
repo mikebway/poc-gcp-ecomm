@@ -2,6 +2,7 @@ package carttrigger
 
 import (
 	"context"
+	"fmt"
 	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	"github.com/mikebway/poc-gcp-ecomm/util"
@@ -101,7 +102,7 @@ func mockNewValue() *FirestoreValue {
 
 	// Get the "open" shopping cart and close it
 	cart := buildMockOpenCart()
-	cart.Status = schema.CsCheckedOut
+	cart.Status.IntegerValue = fmt.Sprintf("%d", schema.CsCheckedOut)
 
 	// Build and return our result - update time will be after the creation time
 	return &FirestoreValue{
@@ -112,25 +113,20 @@ func mockNewValue() *FirestoreValue {
 	}
 }
 
-// buildMockOpenCart returns a types.ShoppingCart structure populated with a shopper that can be used to
-// test storing new shopping carts in our tests.
-func buildMockOpenCart() *schema.ShoppingCart {
-	return &schema.ShoppingCart{
-		Id:           shoppingCartId,
-		CreationTime: shoppingCartCreationTime,
-		Status:       schema.CsOpen,
-		Shopper:      buildMockShopper(),
-	}
+// StoreRefPath returns the string representation of the document reference path for this ShoppingCart.
+func (c *FirestoreCart) StoreRefPath() string {
+	return schema.CartCollection + c.Id.StringValue
 }
 
-// buildMockShopper returns a types.Person structure populated with the shopper constant attributes
-// defined at the head of this file to be used to create new shopping carts in our tests.
-func buildMockShopper() *types.Person {
-	return &types.Person{
-		Id:          shopperId,
-		FamilyName:  shopperFamilyName,
-		GivenName:   shopperGivenName,
-		MiddleName:  shopperMiddleName,
-		DisplayName: shopperDisplayName,
+// buildMockOpenCart returns a types.ShoppingCart structure populated with a shopper that can be used to
+// test storing new shopping carts in our tests.
+func buildMockOpenCart() *FirestoreCart {
+	return &FirestoreCart{
+		Id: StringValue{
+			shoppingCartId,
+		},
+		Status: IntegerValue{
+			IntegerValue: fmt.Sprintf("%d", schema.CsOpen),
+		},
 	}
 }
