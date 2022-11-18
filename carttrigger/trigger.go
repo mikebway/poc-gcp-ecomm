@@ -1,9 +1,9 @@
-// Package trigger handles Firestore trigger invocations when shopping cart documents are updated.
+// Package carttrigger handles Firestore trigger invocations when shopping cart documents are updated.
 //
 // The handler is not invoked for the addition of cart items or delivery addresses, nor for creation of carts,
 // only for updates to the cart root document. This will almost invariably be due to the cart either being
 // submitted or abandoned.
-package trigger
+package carttrigger
 
 import (
 	"context"
@@ -29,16 +29,9 @@ type FirestoreValue struct {
 	UpdateTime time.Time           `json:"updateTime"`
 }
 
-// init establishes our Zap logger for the initial and all subsequent invocations.
-func init() {
-	serviceLogger, _ := zap.NewProduction()
-	zap.ReplaceGlobals(serviceLogger)
-}
-
-// handler receives the Firestore trigger event. The function is deployed with a trigger
-// configuration (see Makefile) that will notify the handler of all updates to the
-// root document of a Shopping Cart.
-func handler(ctx context.Context, e FirestoreEvent) error {
+// UpdateTrigger receives a document update Firestore trigger event. The function is deployed with a trigger
+// configuration (see Makefile) that will notify the handler of all updates to the root document of a Shopping Cart.
+func UpdateTrigger(ctx context.Context, e FirestoreEvent) error {
 
 	// For now, we just log enough to prove that we got here
 	zap.L().Info("cart document updated",

@@ -7,7 +7,6 @@ PROTO_SOURCES := $(call rwildcard,api/mikebway,*.proto)
 # List the generated gRPC service definition Go source files
 PROTO_SERVICE_FILES := $(call rwildcard,api/mikebway,*_api.proto)
 GO_SERVICE_INTERMEDIATE_1 := $(patsubst %_api.proto,%_api_grpc.pb.go,$(PROTO_SERVICE_FILES))
-
 GO_SERVICE_FILES := $(patsubst api/mikebway/%,pb/%,$(GO_SERVICE_INTERMEDIATE_1))
 
 # Define the default recipe if non is specified on the command line
@@ -22,16 +21,19 @@ help: ## List of available commands
 build: protobuf ## Build all the project components (invoking gcloud build)
 	$(info running build)
 	$(MAKE) -C cart build
+	$(MAKE) -C carttrigger build
 
 .PHONY: deploy
 deploy: build ## Deploy all project components to Google Cloud
 	$(info running deploy)
 	$(MAKE) -C cart deploy
+	$(MAKE) -C carttrigger deploy
 
 .PHONY: test
 test: protobuf ## Compile code and run unit tests locally on all components that support them
 	$(info running test)
 	$(MAKE) -C cart test
+	$(MAKE) -C carttrigger test
 
 .PHONY: firestore
 firestore: ## Run the Firestore emulator
@@ -40,7 +42,6 @@ firestore: ## Run the Firestore emulator
 .PHONY: firestore
 stop-firestore: ## Shutdown the Firestore emulator if it is running
 	ps aux | grep firestore | grep java | sort | head -n 1 | awk '{print $$2}' | xargs kill
-#	ps aux | grep firestore | grep java | awk '{print $$2}' | xargs echo
 
 .PHONY: protobuf
 protobuf: ${GO_SERVICE_FILES} ## Compile the protocol buffer / gRPC schema files

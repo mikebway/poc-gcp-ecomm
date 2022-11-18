@@ -27,7 +27,9 @@ to successfully build and deploy services to the Google Cloud Platform can be fo
 pages:
 
 #### The Scenario
-* [The gRPC Cart Microservice](cart/README.md) 
+* [Overview](docs/SCENARIO.md)
+* [The gRPC Cart Microservice](cart/README.md)
+* [The Cart Firestore Trigger Function](carttrigger/README.md)
 
 #### How To ...
 * [Use BloomRPC to invoke gRPC Cloud Run services](docs/BLOOMRPC.md)
@@ -49,6 +51,8 @@ significant locations:
     └── mikebway <-- gRPC service and protocol buffer schema definitions specific to this project.
 │
 ├── cart         <-- Source code and Makefile for the cart-service Cloud Run container.
+│ 
+├── carttrigger  <-- Source code and Makefile for the cart-trigger Firestore trigger Cloud Function.
 │ 
 ├── docs         <-- Additional README documentation, not specific to any service or module.
 │ 

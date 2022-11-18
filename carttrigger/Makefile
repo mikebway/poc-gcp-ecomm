@@ -1,6 +1,5 @@
 PROJECT_ID := poc-gcp-ecomm
 GCP_REGION := us-central1
-SERVICE_NAME := cart-service
 TRIGGER_NAME := UpdateTrigger
 RUNTIME := go119
 
@@ -13,12 +12,12 @@ help: ## List of available commands
 
 .PHONY: build
 build: gomod test ## Build the gRPC service container locally after running unit tests
-	export PROJECT_ID=$(PROJECT_ID); \
-	gcloud builds submit --config=cloudbuild.yaml .
 
 .PHONY: deploy
-deploy: ## Deploy the the latest gRPC service container from the artifact repository
-	gcloud run deploy $(SERVICE_NAME) --image gcr.io/$(PROJECT_ID)/$(SERVICE_NAME):latest --region $(GCP_REGION) --use-http2 --no-allow-unauthenticated
+deploy: build ## Deploy the the trigger Cloud Function
+	gcloud functions deploy $(TRIGGER_NAME) --region $(GCP_REGION) --runtime $(RUNTIME) \
+	 --trigger-event providers/cloud.firestore/eventTypes/document.write \
+	 --trigger-resource "projects/$(PROJECT_ID)/databases/(default)/documents/carts/{id}"
 
 .PHONY: run
 run: compile ## Run the gRPC server locally
@@ -35,5 +34,5 @@ compile: ## Compile the Go code locally
 
 .PHONY: gomod
 gomod: ## Ensure that monorepo pseudo-versions are up to date with latest github commit
-	go mod edit -droprequire=github.com/mikebway/poc-gcp-ecomm/pb -droprequire=github.com/mikebway/poc-gcp-ecomm/types -droprequire=github.com/mikebway/poc-gcp-ecomm/util
+	go mod edit -droprequire=github.com/mikebway/poc-gcp-ecomm/pb -droprequire=github.com/mikebway/poc-gcp-ecomm/types
 	go mod tidy

@@ -1,4 +1,4 @@
-package trigger
+package carttrigger
 
 import (
 	"context"
@@ -62,7 +62,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := util.CaptureLogging(func() {
-		err = handler(ctx, *event)
+		err = UpdateTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
