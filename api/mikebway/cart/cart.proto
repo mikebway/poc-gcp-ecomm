@@ -2,8 +2,8 @@ syntax = "proto3";
 
 package cart;
 
-import "google/type/money.proto";
 import "google/type/timestamp.proto";
+import "mikebway/cart/item.proto";
 import "mikebway/types/address.proto";
 import "mikebway/types/person.proto";
 
@@ -46,26 +46,4 @@ enum ShoppingCartStatus {
   SCS_CHECKED_OUT = 2;
   SCS_ABANDONED_BY_USER = 3;
   SCS_ABANDONED_BY_TIMEOUT = 4;
-}
-
-// CartItem represents a single entry in an order. An order will contain one
-// to many order items.
-message CartItem {
-  // A UUID ID in hexadecimal string form - a unique ID for this item.
-  // This will be set by the cart when the item is added to the shopper's cart
-  string id = 1;
-
-  // The UUID ID (as a hexadecimal string) of the shopping cart that this item belongs to
-  string cart_id = 2;
-
-  // Product code is the equivalent of a SKU code identifying the type of
-  // product or service being ordered.
-  string product_code = 3;
-
-  // Quantity is the number of this item type that is being ordered.
-  int32 quantity = 4;
-
-  // The unit price is the price that the customer was shown for a single item
-  // when they selected the item for their cart
-  google.type.Money unit_price = 5;
 }
