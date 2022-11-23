@@ -7,7 +7,7 @@
 -
 - This project is incomplete and may never be completed!!   
 -
-- Only the first service - the Shopping Cart service - is present so far.
+- Currently working on using Pub/Sub between carttrigger and orderfromcart.
 ```
 
 A proof of concept (POC) project used to experiment with and demonstrate implementing:
