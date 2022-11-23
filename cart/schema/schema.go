@@ -1,4 +1,4 @@
-// Package schema defines generic type document structures as they might be stored in a Google Firestore
+// Package schema defines shopping cart document structures as they might be stored in a Google Firestore
 // or represented in JSON
 package schema
 
@@ -31,7 +31,7 @@ const (
 //
 // It is persisted in the cart firestore collection.
 type ShoppingCart struct {
-	// A UUID ID in hexadecimal string form - a unique ID for this cart.
+	// Id is a UUID ID in hexadecimal string form - a unique ID for this cart.
 	// This will be set by the cart service when the cart is first created.
 	Id string `firestore:"id" json:"id,omitempty"`
 

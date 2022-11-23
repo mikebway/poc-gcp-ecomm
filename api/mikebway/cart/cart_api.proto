@@ -3,6 +3,7 @@ syntax = "proto3";
 package cart;
 
 import "mikebway/cart/cart.proto";
+import "mikebway/cart/item.proto";
 import "mikebway/types/address.proto";
 import "mikebway/types/person.proto";
 

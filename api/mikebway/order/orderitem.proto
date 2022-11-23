@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package mikebway.order;
+
+import "google/type/money.proto";
+
+option go_package = "github.com/mikebway/poc-gcp-ecomm/pb/order";
+
+// OrderItem represents a single entry in an order. An order will contain one
+// to many order items.
+message OrderItem {
+  // A UUID ID in hexadecimal string form - a unique ID for this item.
+  // This will be set by the cart when the item is added to the shopper's cart
+  string id = 1;
+
+  // Product code is the equivalent of a SKU code identifying the type of
+  // product or service being ordered.
+  string product_code = 2;
+
+  // Quantity is the number of this item type that is being ordered.
+  int32 quantity = 3;
+
+  // The unit price is the price that the customer was shown for a single item
+  // when they selected the item for their cart.
+  google.type.Money unit_price = 4;
+}
