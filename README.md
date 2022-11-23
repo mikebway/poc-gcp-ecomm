@@ -100,6 +100,13 @@ The following need to be installed locally to build and deploy the project compo
   * `brew install protoc-gen-go`
   * `brew install protoc-gen-go-grpc`
 * The `gcloud` Google Cloud SDK: [cloud.google.com/sdk/docs/install-sdk](https://cloud.google.com/sdk/docs/install-sdk)
+* A `protoc` plugin to generate a single `.proto` file from the [api/mikebway/cart/cart.proto](api/mikebway/cart/cart.proto)
+  file and its imports. This is needed for the [infrastructure/Makefile](infrastructure/Makefile) to register the 
+  shopping cart Protocol Buffer message as a Pub/Sub topic schema:
+  * Set the `GOBIN` environment variable, typically to `$HOME/go/bin`
+  * Ensure `$GOBIN` is on your path
+  * `go install github.com/alpancs/protoc-gen-pubsub-schema@latest`
+    To allow `protoc` to generate the single file from the [api/mikebway/cart/cart.proto](api/mikebway/cart/cart.proto)
 
 ## For Local and Remote Testing
 
