@@ -28,14 +28,16 @@ pages:
 
 #### The Scenario
 * [Overview](docs/SCENARIO.md)
+* [Infrastructure Setup](infrastructure/README.md)
 * [The gRPC Cart Microservice](cart/README.md)
 * [The Cart Firestore Trigger Function](carttrigger/README.md)
+* [The Order from Cart Topic Consumer](orderfromcart/README.md)
 
 #### How To ...
 * [Use BloomRPC to invoke gRPC Cloud Run services](docs/BLOOMRPC.md)
 * [Grant service account access for Cloud Run services](docs/DATASTORE_ACCESS.md)
 * [Grant Cloud Build access to private Git repos](docs/PRIVATEREPOS.md)
-* [Build leaner Go lervice lontainers](docs/LEAN.md)
+* [Build leaner Go service containers](docs/LEAN.md)
 
 ## Directory Structure
 
@@ -43,30 +45,46 @@ The following directory and file tree does not show every file in the project bu
 significant locations:
 
 ```text
-.
-├── api          <-- gRPC service and protocol buffer message schema definitions.
-    ├── google   <-- Cloned Google protocol buffer definitions for standard types like phone
-    │                numbers etc.
-    │                Note: cloning to support local code generation is considered good practice.
     └── mikebway <-- gRPC service and protocol buffer schema definitions specific to this project.
+.
+├── api             <-- gRPC service and protocol buffer message schema definitions.
+│   ├── google      <-- Cloned Google protocol buffer definitions for standard types like phone
+│   │                   numbers etc.
+│   │
+│   │                   Note: cloning to support local code generation is considered good
+│   │                   practice. numbers etc.
+│   │
+│   └── mikebway    <-- gRPC service and protocol buffer schema definitions specific to this
+│                       project. 
 │
-├── cart         <-- Source code and Makefile for the cart-service Cloud Run container.
+├── cart            <-- Source code and Makefile for the cart-service Cloud Run container.
 │ 
-├── carttrigger  <-- Source code and Makefile for the cart-trigger Firestore trigger Cloud Function.
+├── carttrigger     <-- Source code and Makefile for the cart-trigger Firestore trigger Cloud
+│                       Function.
 │ 
-├── docs         <-- Additional README documentation, not specific to any service or module.
+├── docs            <-- Additional README documentation, not specific to any service or module.
 │ 
-├── pb           <-- Go library module generated from the gRPC service and protocol buffer message
-│                    schema. This is referenced by service modules to facilitate implementation of
-│                    the gRPC APIs. 
-├── types        <-- Go library module implementing shared structure types such as PostalAddress, 
-│                    Person, Timestamp, etc.
-├── go.work      <-- A Go workspace configuration file allowing for the local resolution of cross
-│                    module references without the module code first having to be committed and
-│                    pushed to GitHub. 
-├── Makefile     <-- The master Makefile that, in turn, invokes sub-directory for the service and
-│                    library modules.
-└── README.md    <-- This documentation file
+├── infrastructure  <-- Contains a Makefile that can setup or teardown Pub/Sub topics etc. 
+│ 
+├── orderfromcart   <-- Source code for a Pub/Sub subscriber Cloud Function that consumers 
+│                       shopping cart publications from the carttrigger function and records
+│                       new orders in the order data set.
+│ 
+├── pb              <-- Go library module generated from the gRPC service and protocol buffer
+│                       message schema. This is referenced by service modules to facilitate
+│                       implementation of the gRPC APIs. 
+│ 
+├── types           <-- Go library module implementing shared structure types such as PostalAddress, 
+│                       Person, Timestamp, etc.
+│ 
+├── go.work         <-- A Go workspace configuration file allowing for the local resolution of cross
+│                       module references without the module code first having to be committed and
+│                       pushed to GitHub. 
+│ 
+├── Makefile        <-- The master Makefile that, in turn, invokes sub-directory for the service and
+│                       library modules.
+│ 
+└── README.md       <-- This documentation file
 ```
 
 ## Local Prerequisites
@@ -157,9 +175,10 @@ protobuf    Compile the protocol buffer / gRPC schema files
 Run from this top-level, builds and deploys can take a long time to complete and be frustrating to debug when 
 failures occur many minutes into the process. As an alternative, you can change your working directory to that
 of any of the module and service child directories and run the module specific `Makefile` configurations you 
-find there:
+find there to build and/or deploy just that one component.
 
-* [The gRPC Cart Microservice](cart)
+**NOTE:** The [infrastructure/Makefile](infrastructure/Makefile) is not invoked from this top-level [Makefile](Makefile).
+To establish the one-time infrastructure, or tear it down, you must change to that directory and run `make` there. 
 
 ## Unit Testing With the Firestore Emulator
 

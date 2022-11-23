@@ -14,6 +14,7 @@ npm.installed
 handler
 artifacts/
 cart/cart
+infrastructure/protobuf
 
 ###############################
 # IDE and Tools
