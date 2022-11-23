@@ -1,4 +1,4 @@
-# Order Datastore POC
+# A Google Cloud Platform e-Commerce Prototype
 
 **TIP:** Use the table of contents dropdown menu located to the left 
 
@@ -10,14 +10,18 @@
 - Currently working on using Pub/Sub between carttrigger and orderfromcart.
 ```
 
-A proof of concept (POC) project used to experiment with and demonstrate implementing:
+This is a proof of concept (POC) project used to experiment with and demonstrate implementing:
 
 * gRPC services with Cloud Run
 * Entity tree storage with Firestore
 * Firestore CDC event generation to EventArc
-* EventArc triggered business logic Cloud Functions
-* Cloud Task triggered business logic Cloud Functions
-* Loosely coupled bounded contexts
+* Loosely coupled bounded contexts via
+  * Pub/Sub triggered business logic Cloud Functions
+  * EventArc triggered business logic Cloud Functions
+  * Cloud Task triggered business logic Cloud Functions
+  
+**IMPORTANT: In no way should this be considered to be the foundation for an actual e-commerce system. 
+E-commerce is just the toy scenario chosen to explore GCP capabilities.
 
 ## Index of Child README Documents
 
