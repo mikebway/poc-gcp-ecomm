@@ -9,6 +9,7 @@ Platform including:
 
 * Deploying gRPC services with Cloud Run
   * [The gRPC Cart Microservice](cart/README.md)
+  * [The gRPC Order Microservice](order/README.md)
 
 * Persisting hierarchical document tree data structures with Firestore
   * [The gRPC Cart Microservice](cart/README.md)

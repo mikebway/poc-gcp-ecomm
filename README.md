@@ -36,6 +36,7 @@ pages:
 * [The gRPC Cart Microservice](cart/README.md)
 * [The Cart Firestore Trigger Function](carttrigger/README.md)
 * [The Order from Cart Topic Consumer](orderfromcart/README.md)
+* [The gRPC Order Microservice](order/README.md)
 
 #### How To ...
 * [Use BloomRPC to invoke gRPC Cloud Run services](docs/BLOOMRPC.md)

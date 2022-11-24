@@ -6,6 +6,7 @@ package orderfromcart
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	orders "github.com/mikebway/poc-gcp-ecomm/order/schema"
@@ -27,15 +28,18 @@ func init() {
 // expressed as a JSON string.
 func OrderFromCart(w http.ResponseWriter, r *http.Request) {
 
-	// Have our big brother sibling do all the work to facilitate simpler and more direct unit testing
+	// Have our big brother sibling do all the real work while we just handle the HTTP interfacing here
 	err := doOrderFromCart(r.Body)
 	if err != nil {
+
+		// Dang - log the error and return it to the caller as well
+		zap.L().Error("failed to store order", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 }
 
-// doOrderFromCart does all the heavy lifting for OrderFromCart. It is only implemented as a separate
-// function to facilitate simpler unit testing with more directly interpretable inputs and responses.
+// doOrderFromCart does all the heavy lifting for OrderFromCart. It is implemented as a separate
+// function to isolate the message processing from the transport interface.
 func doOrderFromCart(reader io.Reader) error {
 
 	// Translate the base64 encoded body of the request as a binary byte slice
@@ -59,9 +63,12 @@ func doOrderFromCart(reader io.Reader) error {
 	// TODO: Logging the entire order is temporary until we have implemented order persistence in Firestore
 	jsonBytes, err := json.Marshal(order)
 	if err != nil {
-		return logError("unable to marshal order as JSON", err)
+		return fmt.Errorf("unable to marshal order as JSON: %w", err)
 	}
-	zap.L().Info("order received", zap.ByteString("order", jsonBytes))
+	zap.L().Info("order content", zap.ByteString("order", jsonBytes))
+
+	// Log the ID of the order we have just ingested
+	zap.L().Info("order received", zap.String("id", order.Id))
 
 	// All done, very happy
 	return nil
@@ -73,24 +80,18 @@ func Base64ReaderToBytes(reader io.Reader) ([]byte, error) {
 	// Read all the bytes into memory
 	base64Bytes, err := io.ReadAll(reader)
 	if err != nil {
-		return nil, logError("unable to read base64 bytes", err)
+		return nil, fmt.Errorf("unable to read base64 bytes: %w", err)
 	}
 
 	binaryBytes := make([]byte, base64.StdEncoding.DecodedLen(len(base64Bytes)))
 	n, err := base64.StdEncoding.Decode(binaryBytes, base64Bytes)
 	if err != nil {
-		return nil, logError("unable to decode base64 bytes", err)
+		return nil, fmt.Errorf("unable to decode base64 bytes: %w", err)
 	}
 
 	// Truncate the slice to the number of bytes in the decoded result and return that
 	binaryBytes = binaryBytes[:n]
 	return binaryBytes, nil
-}
-
-// logError logs an error along with some context information, returning another error enriched with that context.
-func logError(contextMsg string, err error) error {
-	zap.L().Error(contextMsg, zap.Error(err))
-	return fmt.Errorf("%s: %w", contextMsg, err)
 }
 
 // unmarshalShoppingCart unpacks the provided binary protobuf message into a shopping cart structure.
@@ -115,6 +116,13 @@ func ConvertCartToOrder(cart *pb.ShoppingCart) (*orders.Order, error) {
 	//       in Firestore and return it in API requests regardless as a record of whatever came out of
 	//       an apparently submitted cart. We could at least log it as an error and maybe flag it
 	//       in Firestore and not fulfill it???
+
+	// At this stage, the only field that we absolutely must have is the cart ID because we are going
+	// to use that as the order ID - the order and the cart are that closely aligned that they share
+	// the same ID.
+	if len(cart.Id) == 0 {
+		return nil, errors.New("cart does not have an ID")
+	}
 
 	// Build the order here
 	order := &orders.Order{
