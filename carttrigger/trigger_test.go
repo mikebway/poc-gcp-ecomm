@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
 	"github.com/mikebway/poc-gcp-ecomm/cart/service"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
@@ -91,6 +92,10 @@ var (
 
 	// mockError is used as an error result when we wish to have our mock Firestore client pretend to fail
 	mockError error
+
+	// checkedOutCartId is the ID of a cart that we have written to Firestore so that it can be referenced
+	// in multiple unit tests rather than creating new carts every time.
+	checkedOutCartId string
 )
 
 // TestMain, if defined (it's optional), allows setup code to be run before and after the suite of unit tests
@@ -136,6 +141,9 @@ func TestMain(m *testing.M) {
 	firestoreValueCreateTime = shoppingCartCreationTime.Add(time.Second)
 	firestoreValueUpdateTime = shoppingCartClosedTime.Add(time.Second)
 
+	// Make sure we have a checked out cart in Firestore that we can reference in multiple tests
+	checkedOutCartId = storeMockCart(true)
+
 	// Run all the unit tests
 	m.Run()
 }
@@ -176,11 +184,8 @@ func TestHandlerHappyPath(t *testing.T) {
 	// Avoid having to pass t in to every assertion
 	req := require.New(t)
 
-	// Store a known cart with checked out status in Firestore
-	cartId := storeMockCart(true)
-
 	// Submit a known FirestoreEvent to the handler while capturing its log output
-	event := mockFirestoreEvent(cartId)
+	event := mockFirestoreEvent(checkedOutCartId)
 	ctx := context.Background()
 	var err error
 	logged := util.CaptureLogging(func() {
@@ -190,7 +195,97 @@ func TestHandlerHappyPath(t *testing.T) {
 	// There should have been no errors and some straightforward log output
 	req.Nil(err, "no error was expected: %v", err)
 	req.Contains(logged, "published checked out cart", "did not see happy path log message")
+	req.Contains(logged, checkedOutCartId, "did not see cart ID in log message")
+
+	// Repeat a second time (would never happen for the same cart in real life) in order
+	// to exercise the already loaded paths of the cart service and pubsub client lazy loaders.
+	logged = util.CaptureLogging(func() {
+		err = UpdateTrigger(ctx, *event)
+	})
+	req.Nil(err, "no error was expected on second run: %v", err)
+	req.Contains(logged, "published checked out cart", "did not see happy path log message on second run")
+	req.Contains(logged, checkedOutCartId, "did not see cart ID in log message on second run")
+}
+
+// TestNotCheckedOut looks at what happens when a cart update triggers the handler but the cart in
+// question has not yet been checked out (hint: we should not publish that cart).
+func TestNotCheckedOut(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Configure a Firestore event where the "new value" status is not "checked out"
+	cartId := uuid.New().String()
+	event := mockFirestoreEvent(cartId)
+	event.Value.Fields.Status.IntegerValue = strconv.FormatInt(int64(schema.CsAbandonedByUser), 10)
+
+	// Submit the FirestoreEvent to the handler while capturing its log output
+	ctx := context.Background()
+	var err error
+	logged := util.CaptureLogging(func() {
+		err = UpdateTrigger(ctx, *event)
+	})
+
+	// There should have been no errors and some straightforward log output
+	req.Nil(err, "no error was expected: %v", err)
+	req.Contains(logged, "ignoring cart update", "did not see ignored cart log message")
 	req.Contains(logged, cartId, "did not see cart ID in log message")
+}
+
+// TestCartNotExist looks at what happens when a cart update triggers the handler but the cart in
+// question does not exists - can't see how that could happen but it has the side benefit of testing
+// onm of the error paths trying to load a cart from Firestore without having to mock an error.
+func TestCartNotExist(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Configure a Firestore event where the cart ID won't be found when the trigger function
+	// tries to load the full cart.
+	cartId := uuid.New().String()
+	event := mockFirestoreEvent(cartId)
+	ctx := context.Background()
+	var err error
+	logged := util.CaptureLogging(func() {
+		err = UpdateTrigger(ctx, *event)
+	})
+
+	// There should have been no errors and some straightforward log output
+	req.NotNil(err, "and error was expected")
+	req.Contains(logged, "unable to retrieve cart from firestore", "did not see cart retrieval failure log message")
+	req.Contains(logged, cartId, "did not see cart ID in log message")
+}
+
+// TestPublishError forces publishing to fail by screwing with the topic ID, setting it to a topic that does not
+// exist and forcing a fresh lazy load.
+func TestPublishError(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Reset the publishing client after we are done so that other tests won't be tripped up
+	originalTopicId := TopicId
+	defer func() {
+		TopicId = originalTopicId
+		pubSubClient.(*PubSubClientImpl).topic = nil
+	}()
+
+	// Force the pubsub client to lazy load a second time but with the ID of a topic that does not exist
+	pubSubClient.(*PubSubClientImpl).topic = nil
+	TopicId = "no-way-this-topic-id-matches-anything"
+
+	// Submit a checked out cart FirestoreEvent to the handler while capturing its log output
+	event := mockFirestoreEvent(checkedOutCartId)
+	ctx := context.Background()
+	var err error
+	logged := util.CaptureLogging(func() {
+		err = UpdateTrigger(ctx, *event)
+	})
+
+	// There should have been no errors and some straightforward log output
+	req.NotNil(err, "and error was expected")
+	req.Contains(logged, "pubsub publish failed", "did not see publish failure log message")
+	req.Contains(logged, checkedOutCartId, "did not see cart ID in log message")
 }
 
 // mockFirestoreEvent constructs a FirestoreEvent populated with known values that we can check in out unit tests.

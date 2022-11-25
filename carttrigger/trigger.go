@@ -18,15 +18,13 @@ import (
 	"time"
 )
 
-const (
-	// TopicId identifies the Pub/Sub topic in the TopicProjectId project that we publish shopping carts to.
-	TopicId = "shopping-cart"
-)
-
 var (
 	// TopicProjectId is a variable so that unit tests can override it to ensures that test requests are not
 	// routed to the live project! See https://firebase.google.com/docs/emulator-suite/connect_firestore
 	TopicProjectId string
+
+	// TopicId a variable so that unit tests can override it to force errors to occur
+	TopicId string
 
 	// cartClient is lazy-loaded and allows us to retrieve complete shopping carts from Firestore. Unit tests
 	// can substitute an alternative instance here to force errors.
@@ -83,8 +81,9 @@ type PubSubClient interface {
 // init is the static initializer used to configure our local and global static variables.
 func init() {
 
-	// Default the project ID to be used for live Pub/Sub topic connections
+	// Default the project ID and topic ID to be used for live Pub/Sub topic connections
 	TopicProjectId = "poc-gcp-ecomm"
+	TopicId = "shopping-cart"
 
 	// Initialize our Zap logger
 	serviceLogger, _ := zap.NewProduction()
