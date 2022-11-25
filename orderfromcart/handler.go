@@ -20,6 +20,7 @@ import (
 
 // init is the static initializer used to configure our local and global static variables.
 func init() {
+	// Initialize our Zap logger
 	serviceLogger, _ := zap.NewProduction()
 	zap.ReplaceGlobals(serviceLogger)
 }

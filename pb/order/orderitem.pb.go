@@ -37,7 +37,7 @@ type OrderItem struct {
 	// Quantity is the number of this item type that is being ordered.
 	Quantity int32 `protobuf:"varint,3,opt,name=quantity,proto3" json:"quantity,omitempty"`
 	// The unit price is the price that the customer was shown for a single item
-	// when they selected the item for their cart
+	// when they selected the item for their cart.
 	UnitPrice *money.Money `protobuf:"bytes,4,opt,name=unit_price,json=unitPrice,proto3" json:"unit_price,omitempty"`
 }
 

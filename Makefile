@@ -22,26 +22,37 @@ build: protobuf ## Build all the project components (invoking gcloud build)
 	$(info running build)
 	$(MAKE) -C cart build
 	$(MAKE) -C carttrigger build
+	$(MAKE) -C orderfromcart build
 
 .PHONY: deploy
 deploy: build ## Deploy all project components to Google Cloud
 	$(info running deploy)
 	$(MAKE) -C cart deploy
 	$(MAKE) -C carttrigger deploy
+	$(MAKE) -C orderfromcart deploy
 
 .PHONY: test
 test: protobuf ## Compile code and run unit tests locally on all components that support them
 	$(info running test)
 	$(MAKE) -C cart test
 	$(MAKE) -C carttrigger test
+	$(MAKE) -C orderfromcart test
 
 .PHONY: firestore
 firestore: ## Run the Firestore emulator
 	gcloud emulators firestore start --host-port=[::1]:8219 --project=poc-gcp-ecomm
 
-.PHONY: firestore
+.PHONY: stop-firestore
 stop-firestore: ## Shutdown the Firestore emulator if it is running
-	ps aux | grep firestore | grep java | sort | head -n 1 | awk '{print $$2}' | xargs kill
+	ps aux | grep firestore | grep java | sort | head -n 1 | awk '{print $$2}' | xargs kill -9
+
+.PHONY: pubsub
+pubsub: ## Run the Firestore emulator
+	gcloud beta emulators pubsub start --host-port=[::1]:8085 --project=poc-gcp-ecomm
+
+.PHONY: stop-pubsub
+stop-pubsub: ## Shutdown the Firestore emulator if it is running
+	ps aux | grep pubsub | grep java | sort | head -n 1 | awk '{print $$2}' | xargs kill -9
 
 .PHONY: protobuf
 protobuf: ${GO_SERVICE_FILES} ## Compile the protocol buffer / gRPC schema files

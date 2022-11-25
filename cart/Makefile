@@ -18,7 +18,7 @@ build: gomod test ## Build the gRPC service container locally after running unit
 
 .PHONY: deploy
 deploy: ## Deploy the the latest gRPC service container from the artifact repository
-	gcloud run deploy $(SERVICE_NAME) --image gcr.io/$(PROJECT_ID)/$(SERVICE_NAME):latest --region $(GCP_REGION) --use-http2 --no-allow-unauthenticated
+	gcloud run deploy $(SERVICE_NAME) --image us-central1-docker.pkg.dev/$(PROJECT_ID)/gcr-artifacts/$(SERVICE_NAME):latest --region $(GCP_REGION) --use-http2 --no-allow-unauthenticated
 
 .PHONY: run
 run: compile ## Run the gRPC server locally

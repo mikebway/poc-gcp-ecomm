@@ -20,10 +20,6 @@ deploy: build ## Deploy the the trigger Cloud Function
 	 --entry-point=$(ENTRY_POINT) --trigger-http --allow-unauthenticated --ingress-settings=internal-only
 	 # TODO: Implement authentication for the OrderFromCart Cloud Task target function
 
-.PHONY: run
-run: compile ## Run the gRPC server locally
-	go run
-
 .PHONY: test
 test: compile ## Run the unit tests locally
 	go test ./... -coverprofile cover.out -race; \

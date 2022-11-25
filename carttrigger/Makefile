@@ -19,10 +19,6 @@ deploy: build ## Deploy the the trigger Cloud Function
 	 --trigger-event providers/cloud.firestore/eventTypes/document.write \
 	 --trigger-resource "projects/$(PROJECT_ID)/databases/(default)/documents/carts/{id}"
 
-.PHONY: run
-run: compile ## Run the gRPC server locally
-	go run
-
 .PHONY: test
 test: compile ## Run the unit tests locally
 	go test ./... -coverprofile cover.out -race; \

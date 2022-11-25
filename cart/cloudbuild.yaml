@@ -31,7 +31,7 @@ steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: [
       'build',
-      '-t', 'gcr.io/$PROJECT_ID/cart-service',
+      '-t', 'us-central1-docker.pkg.dev/$PROJECT_ID/gcr-artifacts/cart-service',
       '-f', 'Dockerfile',
       '.']
 

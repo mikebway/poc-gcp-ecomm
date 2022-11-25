@@ -16,15 +16,22 @@ import (
 	"time"
 )
 
-const (
-	ProjectId = "poc-gcp-ecomm"
-)
-
 var (
+	// ProjectId is a variable so that unit tests can override it to ensures that test requests are not routed to
+	// the live project! See https://firebase.google.com/docs/emulator-suite/connect_firestore
+	ProjectId string
+
 	// UnitTestNewCartServiceError should be returned by NewCartService if we are running unit tests
 	// and unitTestNewCartServiceError is not nil.
 	UnitTestNewCartServiceError error
 )
+
+// init is the static initializer used to configure our local and global static variables.
+func init() {
+
+	// Set the project ID to be used for live Firestore etc. connections
+	ProjectId = "poc-gcp-ecomm"
+}
 
 // CartService is a structure class with methods that implements the cart.CartAPIServer gRPC API
 // storing the data for the social graph in a Google Cloud Firestore Kind.
@@ -112,7 +119,7 @@ func (cs *CartService) CreateShoppingCart(ctx context.Context, req *pbcart.Creat
 	}
 
 	// All good, log our joy and return the protocol buffer transliteration of our shiny new cart
-	l.Info("new cart stored successfully", zap.String("CartId", storableCart.Id))
+	l.Info("new cart stored successfully", zap.String("CartId", storableCart.Id), zap.String("path", ref.Path))
 	return &pbcart.CreateShoppingCartResponse{
 		Cart: storableCart.AsPBShoppingCart(),
 	}, nil

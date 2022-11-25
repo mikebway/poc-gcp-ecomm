@@ -71,6 +71,8 @@ significant locations:
 │ 
 ├── infrastructure  <-- Contains a Makefile that can setup or teardown Pub/Sub topics etc. 
 │ 
+├── order           <-- Source code and Makefile for the order-service Cloud Run container. 
+│ 
 ├── orderfromcart   <-- Source code for a Pub/Sub subscriber Cloud Function that consumers 
 │                       shopping cart publications from the carttrigger function and records
 │                       new orders in the order data set.
@@ -118,8 +120,12 @@ The following need to be installed locally to build and deploy the project compo
 * Firestore Database Emulator
   * `brew install openjdk`
   * `gcloud components update`
-  * `gcloud emulators firestore start`
-    * Ctrl-C to exit once it has downloaded and started
+  * Start with `make firestore` in a shell window
+  * Stop with `make stop-firestore` in a second shell window
+* Pub/Sub Emulator
+  * Same `brew` and `gcloud` commands as above preparing for the Firestore emulator
+  * Start with `make pubsub` in a shell window
+  * Stop with `make stop-pubsub` in a second shell window
 * BloomRPC, the equivalent of Postman for testing gRPC APIs
   * `brew install --cask bloomrpc`
 

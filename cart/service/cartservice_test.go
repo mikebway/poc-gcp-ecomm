@@ -61,6 +61,9 @@ func init() {
 // for this package.
 func TestMain(m *testing.M) {
 
+	// Ensure that our Firestore requests do not get routed to the live project by mistake
+	ProjectId = "demo-" + ProjectId
+
 	// Configure the environment variable that informs the Firestore client that it should connect to the
 	// emulator and how to reach it.
 	_ = os.Setenv(EnvFirestoreEmulator, FirestoreEmulatorHost)

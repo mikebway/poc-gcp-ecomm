@@ -11,8 +11,9 @@ PROTO_SOURCES := $(call rwildcard,../api/mikebway,*.proto)
 # Protocol Buffer sources and destinations
 SOURCE_PROTO_PATH := ../api
 MERGED_PROTO_PATH := ${PWD}/protobuf
-SOURCE_CART_PROTO := mikebway/cart/cart.proto
-MERGED_CART_PROTO := ${MERGED_PROTO_PATH}/mikebway/cart/cart.pps
+CART_PROTO_ROOT := mikebway/cart/cart
+SOURCE_CART_PROTO := ${CART_PROTO_ROOT}.proto
+MERGED_CART_PROTO := ${MERGED_PROTO_PATH}/${CART_PROTO_ROOT}.pps
 
 # Pub/Sub schema names
 SHOPPING_CART_SCHEMA := shopping-cart
@@ -32,6 +33,12 @@ help: ## List of available commands
 
 .PHONY: setup
 setup: ${MERGED_CART_PROTO} ## Setup the Google Cloud infrastructure
+	# Create the artifact repo for Cloud Run containers
+	-gcloud artifacts repositories create gcr-artifacts --quiet\
+        --repository-format=docker \
+        --location=us-central1 \
+        --description="Cloud Run containers"] \
+
 	# Convert the multi-file protobuf Shopping Cart schema to a single line and register as a Pub/Sub schema
 	-TEMP=`tail -n +5 ${MERGED_CART_PROTO} | tr -d '[:cntrl:]' | tr '"' "'"`; gcloud pubsub schemas create ${SHOPPING_CART_SCHEMA} --quiet --type=PROTOCOL_BUFFER --definition="$$TEMP"
 
@@ -43,6 +50,7 @@ setup: ${MERGED_CART_PROTO} ## Setup the Google Cloud infrastructure
 teardown: ## Tear down the Google Cloud infrastructure
 	-gcloud pubsub topics delete ${SHOPPING_CART_TOPIC} --quiet
 	-gcloud pubsub schemas delete ${SHOPPING_CART_SCHEMA} --quiet
+	#-gcloud artifacts repositories create gcr-artifacts
 
 ## Generate a single file protobuf schema for a shopping cart from the multi-file master definition
 ${MERGED_CART_PROTO}: ${PROTO_SOURCES}
