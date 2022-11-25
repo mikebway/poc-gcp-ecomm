@@ -3,7 +3,6 @@ package carttrigger
 import (
 	"cloud.google.com/go/pubsub"
 	"context"
-	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
@@ -81,17 +80,8 @@ var (
 	firestoreValueCreateTime time.Time
 	firestoreValueUpdateTime time.Time
 
-	// A UUID string value retrieved from the cart we register as the foundation of amy
-	// test that has to load data from Firestore (i.e. a lot of them)
-	// shoppingCartId string
-)
-
-var (
 	// cartService allows unit tests to write populated shopping carts to Firestore
 	cartService *service.CartService
-
-	// mockError is used as an error result when we wish to have our mock Firestore client pretend to fail
-	mockError error
 
 	// checkedOutCartId is the ID of a cart that we have written to Firestore so that it can be referenced
 	// in multiple unit tests rather than creating new carts every time.
@@ -126,9 +116,6 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		zap.L().Panic("unable to create pubsub topic", zap.Error(err))
 	}
-
-	// Populate our mock error
-	mockError = errors.New("this is a mock error")
 
 	// Shopping cart values
 	t, _ := types.TimestampFromRFC3339Nano(earlyTimeString)
@@ -251,7 +238,7 @@ func TestCartNotExist(t *testing.T) {
 	})
 
 	// There should have been no errors and some straightforward log output
-	req.NotNil(err, "and error was expected")
+	req.NotNil(err, "an error was expected")
 	req.Contains(logged, "unable to retrieve cart from firestore", "did not see cart retrieval failure log message")
 	req.Contains(logged, cartId, "did not see cart ID in log message")
 }
@@ -283,7 +270,7 @@ func TestPublishError(t *testing.T) {
 	})
 
 	// There should have been no errors and some straightforward log output
-	req.NotNil(err, "and error was expected")
+	req.NotNil(err, "an error was expected")
 	req.Contains(logged, "pubsub publish failed", "did not see publish failure log message")
 	req.Contains(logged, checkedOutCartId, "did not see cart ID in log message")
 }
