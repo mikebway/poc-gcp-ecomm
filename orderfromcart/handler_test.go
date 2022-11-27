@@ -1,9 +1,12 @@
 package orderfromcart
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"github.com/mikebway/poc-gcp-ecomm/util"
+	pubsubapi "google.golang.org/api/pubsub/v1"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -83,7 +86,7 @@ func TestOrderFromCartHappyPath(t *testing.T) {
 	req := require.New(t)
 
 	// Assemble a mock HTTP request and a means to record the response
-	httpRequest := httptest.NewRequest("POST", "/", strings.NewReader(mockShoppingCartBase64()))
+	httpRequest := httptest.NewRequest("POST", "/", buildPushRequest(mockShoppingCartPB()))
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
@@ -97,14 +100,15 @@ func TestOrderFromCartHappyPath(t *testing.T) {
 	req.Contains(logged, "\"id\": \"d1cecab3-5bc0-43d4-aef1-99ad69794313\"", "should have seen the expected order ID in the logs")
 }
 
-// TestOrderFromCartSadPath exercises the main handler function with bad data that should result in an error response.
-func TestOrderFromCartSadPath(t *testing.T) {
+// TestInvalidPushRequest exercises the main handler function with an invalid request that does not
+// match a Pub/Sub push.
+func TestInvalidPushRequest(t *testing.T) {
 
 	// Avoid having to pass t in to every assertion
 	req := require.New(t)
 
 	// Assemble a mock HTTP request and a means to record the response
-	httpRequest := httptest.NewRequest("POST", "/", strings.NewReader("this is not a valid base64 protobuf message"))
+	httpRequest := httptest.NewRequest("POST", "/", strings.NewReader("this is not a valid push request"))
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
@@ -114,8 +118,29 @@ func TestOrderFromCartSadPath(t *testing.T) {
 
 	// Confirm the result was a happy one
 	req.Equal(responseRecorder.Code, http.StatusBadRequest, "should have a 400 Bad Request response code")
-	req.Contains(responseRecorder.Body.String(), "unable to decode base64 bytes", "should have seen the expected invalid base64 encoding message in the logs")
-	req.Contains(logged, "unable to decode base64 bytes", "should have seen the expected invalid base64 encoding message in the logs")
+	req.Contains(responseRecorder.Body.String(), "could not decode push request json body", "should have seen the expected invalid push request message in the response")
+	req.Contains(logged, "could not decode push request json body", "should have seen the expected invalid base64 encoding message in the logs")
+}
+
+// TestInvalidBase64 exercises the main handler function with bad data that should result in an error response.
+func TestInvalidBase64(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Assemble a mock HTTP request and a means to record the response
+	httpRequest := httptest.NewRequest("POST", "/", buildPushRequestFromString("this is not a valid base64 payload"))
+	responseRecorder := httptest.NewRecorder()
+
+	// Wrap a call to the target function so that we can capture its log output
+	logged := util.CaptureLogging(func() {
+		OrderFromCart(responseRecorder, httpRequest)
+	})
+
+	// Confirm the result was a happy one
+	req.Equal(responseRecorder.Code, http.StatusBadRequest, "should have a 400 Bad Request response code")
+	req.Contains(responseRecorder.Body.String(), "unable to decode base64 data", "should have seen the expected invalid push request message in the response")
+	req.Contains(logged, "unable to decode base64 data", "should have seen the expected invalid base64 encoding message in the logs")
 }
 
 // TestWrongBinary looks at what happens when a valid base64 string is passed to the order loader but
@@ -126,8 +151,7 @@ func TestWrongBinary(t *testing.T) {
 	req := require.New(t)
 
 	// Assemble a mock HTTP request and a means to record the response
-	base64Body := base64.StdEncoding.EncodeToString([]byte("this is not a valid protobuf shopping cart"))
-	httpRequest := httptest.NewRequest("POST", "/", strings.NewReader(base64Body))
+	httpRequest := httptest.NewRequest("POST", "/", buildPushRequest([]byte("this is not a valid protobuf shopping cart")))
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
@@ -137,7 +161,7 @@ func TestWrongBinary(t *testing.T) {
 
 	// Confirm the result was a happy one
 	req.Equal(responseRecorder.Code, http.StatusBadRequest, "should have a 400 Bad Request response code")
-	req.Contains(responseRecorder.Body.String(), "failed to unmarshal shopping cart protobuf message", "should have seen the expected protobuf unmarshal error in the logs")
+	req.Contains(responseRecorder.Body.String(), "failed to unmarshal shopping cart protobuf message", "should have seen the expected protobuf unmarshal error in the response")
 	req.Contains(logged, "failed to unmarshal shopping cart protobuf message", "should have seen the expected protobuf unmarshal error in the logs")
 }
 
@@ -156,8 +180,7 @@ func TestNoCartID(t *testing.T) {
 	pbBytes, _ := proto.Marshal(pbCart)
 
 	// Assemble a mock HTTP request and a means to record the response
-	base64Body := base64.StdEncoding.EncodeToString(pbBytes)
-	httpRequest := httptest.NewRequest("POST", "/", strings.NewReader(base64Body))
+	httpRequest := httptest.NewRequest("POST", "/", buildPushRequest(pbBytes))
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
@@ -167,7 +190,7 @@ func TestNoCartID(t *testing.T) {
 
 	// Confirm the result was a happy one
 	req.Equal(responseRecorder.Code, http.StatusBadRequest, "should have a 400 Bad Request response code")
-	req.Contains(responseRecorder.Body.String(), "cart does not have an ID", "should have seen the expected missing ID error in the logs")
+	req.Contains(responseRecorder.Body.String(), "cart does not have an ID", "should have seen the expected missing ID error in the response")
 	req.Contains(logged, "cart does not have an ID", "should have seen the expected missing ID error in the logs")
 }
 
@@ -192,8 +215,8 @@ func TestBodyReaderError(t *testing.T) {
 
 	// Confirm the result was a happy one
 	req.Equal(responseRecorder.Code, http.StatusBadRequest, "should have a 400 Bad Request response code")
-	req.Contains(responseRecorder.Body.String(), "unable to read base64 bytes", "should have seen the expected read failure error in the logs")
-	req.Contains(logged, "unable to read base64 bytes", "should have seen the expected read failure error in the logs")
+	req.Contains(responseRecorder.Body.String(), "could not decode push request json body: i am a bad reader", "should have seen the expected read failure error in the response")
+	req.Contains(logged, "could not decode push request json body: i am a bad reader", "should have seen the expected read failure error in the logs")
 }
 
 // BadReader implements the io.Reader interface but deliberately fails every time anyone tries to read from it.
@@ -206,15 +229,33 @@ func (r BadReader) Read(p []byte) (n int, err error) {
 	return 0, errors.New("i am a bad reader")
 }
 
-// mockShoppingCartBase64 returns a protobuf binary message encoded as a base64 string for a checked out shopping
-// cart structure as its value and with the update time being later than its creation time.
-func mockShoppingCartBase64() string {
+// buildPushRequest wraps the provided data bytes as the data payload of a push request, returning that as byte reader.
+func buildPushRequest(data []byte) io.Reader {
 
-	// Get the binary bytes of a shopping cart as a protobuf message
-	bytes := mockShoppingCartPB()
+	// Encode the data as base64
+	b64 := base64.StdEncoding.EncodeToString(data)
 
-	// Return that as a base64 encoded string
-	return base64.StdEncoding.EncodeToString(bytes)
+	// Have our sibling to the rest
+	return buildPushRequestFromString(b64)
+}
+
+// buildPushRequestFromString wraps the provided data string as the data payload of a push request, returning that as
+// a byte reader. A valid string would be base64 encoded data but this function can be used to test what happens
+// if the data is not base64 too :-)
+func buildPushRequestFromString(data string) io.Reader {
+
+	// Wrap that in a push request message structure
+	pushReq := &pushRequest{
+		Message: pubsubapi.PubsubMessage{
+			Data: data,
+		},
+	}
+
+	// Marshal the push request as JSON string
+	jsonBytes, _ := json.Marshal(pushReq)
+
+	// Return a readr om those bytes
+	return bytes.NewReader(jsonBytes)
 }
 
 // mockShoppingCartPB returns a protobuf binary bytes slice populated with a checked out shopping cart structure as

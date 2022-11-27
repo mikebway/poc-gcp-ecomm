@@ -14,6 +14,7 @@ import (
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	_ "github.com/mikebway/poc-gcp-ecomm/types"
 	"go.uber.org/zap"
+	"google.golang.org/api/pubsub/v1"
 	"io"
 	"net/http"
 )
@@ -23,6 +24,12 @@ func init() {
 	// Initialize our Zap logger
 	serviceLogger, _ := zap.NewProduction()
 	zap.ReplaceGlobals(serviceLogger)
+}
+
+// pushRequest represents the payload of a Pub/Sub push message.
+type pushRequest struct {
+	Message      pubsub.PubsubMessage `json:"message"`
+	Subscription string               `json:"subscription,omitempty"`
 }
 
 // OrderFromCart is Cloud Function the entry point. The payload of the HTTP request is a checked out shopping cart
@@ -47,10 +54,16 @@ func OrderFromCart(w http.ResponseWriter, r *http.Request) {
 // See https://cloud.google.com/pubsub/docs/push for documentation of the reader JSON content.
 func doOrderFromCart(reader io.Reader) error {
 
+	// Unpack the JSON push request message from the request body
+	var pushReq pushRequest
+	if err := json.NewDecoder(reader).Decode(&pushReq); err != nil {
+		return fmt.Errorf("could not decode push request json body: %v", err)
+	}
+
 	// Translate the base64 encoded body of the request as a binary byte slice
-	pbBytes, err := Base64ReaderToBytes(reader)
+	pbBytes, err := base64.StdEncoding.DecodeString(pushReq.Message.Data)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to decode base64 data: %w", err)
 	}
 
 	// Unmarshall the protobuf binary message into a shopping cart structure
@@ -77,26 +90,6 @@ func doOrderFromCart(reader io.Reader) error {
 
 	// All done, very happy
 	return nil
-}
-
-// Base64ReaderToBytes reads a base64 encoded byte stream and returns it as a byte slice.
-func Base64ReaderToBytes(reader io.Reader) ([]byte, error) {
-
-	// Read all the bytes into memory
-	base64Bytes, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, fmt.Errorf("unable to read base64 bytes: %w", err)
-	}
-
-	binaryBytes := make([]byte, base64.StdEncoding.DecodedLen(len(base64Bytes)))
-	n, err := base64.StdEncoding.Decode(binaryBytes, base64Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode base64 bytes: %w", err)
-	}
-
-	// Truncate the slice to the number of bytes in the decoded result and return that
-	binaryBytes = binaryBytes[:n]
-	return binaryBytes, nil
 }
 
 // unmarshalShoppingCart unpacks the provided binary protobuf message into a shopping cart structure.
