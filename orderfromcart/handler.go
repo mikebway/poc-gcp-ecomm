@@ -27,6 +27,8 @@ func init() {
 
 // OrderFromCart is Cloud Function the entry point. The payload of the HTTP request is a checked out shopping cart
 // expressed as a JSON string.
+//
+// See https://cloud.google.com/pubsub/docs/push for documentation of the request body JSON content.
 func OrderFromCart(w http.ResponseWriter, r *http.Request) {
 
 	// Have our big brother sibling do all the real work while we just handle the HTTP interfacing here
@@ -41,6 +43,8 @@ func OrderFromCart(w http.ResponseWriter, r *http.Request) {
 
 // doOrderFromCart does all the heavy lifting for OrderFromCart. It is implemented as a separate
 // function to isolate the message processing from the transport interface.
+//
+// See https://cloud.google.com/pubsub/docs/push for documentation of the reader JSON content.
 func doOrderFromCart(reader io.Reader) error {
 
 	// Translate the base64 encoded body of the request as a binary byte slice
