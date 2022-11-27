@@ -14,7 +14,7 @@ help: ## List of available commands
 build: gomod test ## Build the gRPC service container locally after running unit tests
 
 .PHONY: deploy
-deploy: build ## Deploy the the trigger Cloud Function
+deploy: ## Deploy the the trigger Cloud Function
 	gcloud functions deploy $(TRIGGER_NAME) --region $(GCP_REGION) --runtime $(RUNTIME) \
 	 --trigger-event providers/cloud.firestore/eventTypes/document.write \
 	 --trigger-resource "projects/$(PROJECT_ID)/databases/(default)/documents/carts/{id}"

@@ -6,7 +6,7 @@ RUN set -x && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -
     ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY ./service /service
+COPY ./server /server
 
 # Run the web service on container startup.
-CMD ["/service"]
+CMD ["/server"]

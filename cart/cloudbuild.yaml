@@ -20,7 +20,7 @@ steps:
 
 # Build the service binary
 - name: 'golang:1.19-buster'
-  args: ['go', 'build', '-v', '-o', 'service']
+  args: ['go', 'build', '-v', '-o', 'server']
   volumes:
     - name: 'ssh'
       path: /root/.ssh
@@ -37,7 +37,7 @@ steps:
 
 # Push our generated image to teh container registry
 images:
-  - 'gcr.io/$PROJECT_ID/cart-service'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/gcr-artifacts/cart-service'
 
 # Fetch the SSH private key that allows "deploy" read access to sibling
 # modules in our monorepo.

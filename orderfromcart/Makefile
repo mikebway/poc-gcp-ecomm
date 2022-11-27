@@ -15,7 +15,7 @@ help: ## List of available commands
 build: gomod test ## Build the gRPC service container locally after running unit tests
 
 .PHONY: deploy
-deploy: build ## Deploy the the trigger Cloud Function
+deploy: ## Deploy the the trigger Cloud Function
 	gcloud functions deploy $(FUNCTION_NAME) --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
 	 --entry-point=$(ENTRY_POINT) --trigger-http --allow-unauthenticated --ingress-settings=internal-only
 	 # TODO: Implement authentication for the OrderFromCart Cloud Task target function
