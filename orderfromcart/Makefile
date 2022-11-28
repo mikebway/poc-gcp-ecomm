@@ -27,7 +27,7 @@ build: gomod test ## Build the gRPC service container locally after running unit
 .PHONY: deploy
 deploy: ## Deploy the the trigger Cloud Function
 	gcloud functions deploy $(FUNCTION_NAME) --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
-	 --entry-point=$(ENTRY_POINT) --trigger-http --allow-unauthenticated --ingress-settings=internal-only
+     --entry-point=$(ENTRY_POINT) --trigger-http --allow-unauthenticated --ingress-settings=internal-only
 	-gcloud pubsub subscriptions create ${SUBSCRIPTION_ID} --topic-project=${PROJECT_ID} --topic=${SHOPPING_CART_TOPIC} \
 		--push-endpoint=$(gcloud functions describe ${FUNCTION_NAME} --gen2 --region=${GCP_REGION} --format="value(serviceConfig.uri)")
 	# Expect an error in the line above - it will always fail if the subscription already exists

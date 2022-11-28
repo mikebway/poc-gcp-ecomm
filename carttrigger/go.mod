@@ -6,10 +6,10 @@ require (
 	cloud.google.com/go/pubsub v1.26.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
-	github.com/mikebway/poc-gcp-ecomm/cart v0.0.0-20221125221508-b52664ee2833
-	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20221125221508-b52664ee2833
-	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20221125221508-b52664ee2833
-	github.com/mikebway/poc-gcp-ecomm/util v0.0.0-20221125221508-b52664ee2833
+	github.com/mikebway/poc-gcp-ecomm/cart v0.0.0-20221127215024-4a9112fd6e49
+	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20221127215024-4a9112fd6e49
+	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20221127215024-4a9112fd6e49
+	github.com/mikebway/poc-gcp-ecomm/util v0.0.0-20221127215024-4a9112fd6e49
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.23.0
 	google.golang.org/genproto v0.0.0-20221018160656-63c7b68cfc55

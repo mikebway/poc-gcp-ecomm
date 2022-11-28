@@ -5,9 +5,9 @@ go 1.19
 require (
 	cloud.google.com/go/firestore v1.8.0
 	github.com/google/uuid v1.3.0
-	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20221125221508-b52664ee2833
-	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20221125221508-b52664ee2833
-	github.com/mikebway/poc-gcp-ecomm/util v0.0.0-20221125221508-b52664ee2833
+	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20221127215024-4a9112fd6e49
+	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20221127215024-4a9112fd6e49
+	github.com/mikebway/poc-gcp-ecomm/util v0.0.0-20221127215024-4a9112fd6e49
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.23.0
 	google.golang.org/api v0.99.0
