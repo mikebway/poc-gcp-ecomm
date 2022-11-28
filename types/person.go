@@ -11,7 +11,7 @@ const (
 	KeyPrefixPerson = "person:"
 )
 
-// Person describes a huma individual within the social graph
+// Person describes a human individual
 //
 // See https://developers.google.com/people/api/rest/v1/people#Person.Name as field naming reference.
 type Person struct {

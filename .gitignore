@@ -15,6 +15,7 @@ handler
 artifacts/
 cart/cart
 infrastructure/protobuf
+order/order
 
 ###############################
 # IDE and Tools

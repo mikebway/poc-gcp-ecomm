@@ -9,6 +9,7 @@ import (
 	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	"github.com/mikebway/poc-gcp-ecomm/types"
+	"github.com/mikebway/poc-gcp-ecomm/util"
 	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -33,36 +34,36 @@ func init() {
 	ProjectId = "poc-gcp-ecomm"
 }
 
-// CartService is a structure class with methods that implements the cart.CartAPIServer gRPC API
-// storing the data for the social graph in a Google Cloud Firestore Kind.
+// CartService is a structure class with methods that implements the cart.OrderAPIServer gRPC API
+// storing the data for shopping carts in a Google Cloud Firestore document collection.
 type CartService struct {
 	pbcart.UnimplementedCartAPIServer
 
-	// fsClient is the GCP Firestore client - it is thread safe and can be reused concurrently
-	fsClient *firestore.Client
+	// FsClient is the GCP Firestore client - it is thread safe and can be reused concurrently
+	FsClient *firestore.Client
 
 	// drProxy is used to allow unit tests to intercept firestore.DocumentRef function calls
 	// and insert errors etc. into the responses.
-	drProxy DocumentRefProxy
+	drProxy util.DocumentRefProxy
 
 	// dsProxy is used to allow unit tests to intercept firestore.DocumentSnapshot function calls
 	// and insert errors etc. into the responses.
-	dsProxy DocumentSnapshotProxy
+	dsProxy util.DocumentSnapshotProxy
 
 	// itemsGetterProxy is used to obtain an ItemsCollectionProxy for a given cart. Unit tests may
 	// substitute an alternative implementation this interface in order to be able to insert errors etc.
 	// into the responses of the ItemsCollectionProxy that the ItemCollectionGetterProxy returns.
-	itemsGetterProxy ItemCollectionGetterProxy
+	itemsGetterProxy util.ItemCollectionGetterProxy
 }
 
-// NewCartService is a factory method returning an instance of our social graph service.
+// NewCartService is a factory method returning an instance of our shopping cart service.
 func NewCartService() (*CartService, error) {
 
 	// Build our service instance here with our default, direct passthrough, interception proxies
 	// for firestore.DocumentRef and firestore.DocumentSnapshot function calls
 	svc := &CartService{
-		drProxy: &DocRefProxy{},
-		dsProxy: &DocSnapProxy{},
+		drProxy: &util.DocRefProxy{},
+		dsProxy: &util.DocSnapProxy{},
 	}
 
 	// Obtain a firestore client and stuff that in the service instance
@@ -70,7 +71,7 @@ func NewCartService() (*CartService, error) {
 	var err error
 	if UnitTestNewCartServiceError == nil {
 		// Set the Firestore client if we are not unit testing an error situation.
-		svc.fsClient, err = firestore.NewClient(ctx, ProjectId)
+		svc.FsClient, err = firestore.NewClient(ctx, ProjectId)
 
 	} else {
 		// We are unit testing and required to report an error
@@ -83,8 +84,8 @@ func NewCartService() (*CartService, error) {
 	}
 
 	// Make the firestore client available to the cart item getter proxy
-	svc.itemsGetterProxy = &ItemCollGetterProxy{
-		fsClient: svc.fsClient,
+	svc.itemsGetterProxy = &util.ItemCollGetterProxy{
+		FsClient: svc.FsClient,
 	}
 
 	// All done - return the populated service instance
@@ -110,7 +111,7 @@ func (cs *CartService) CreateShoppingCart(ctx context.Context, req *pbcart.Creat
 	l.Info("storing new cart", zap.String("CartId", storableCart.Id))
 
 	// Store the empty new cart in the firestore
-	ref := cs.fsClient.Doc(storableCart.StoreRefPath())
+	ref := cs.FsClient.Doc(storableCart.StoreRefPath())
 	_, err := cs.drProxy.Create(ref, ctx, storableCart)
 	if err != nil {
 		err = fmt.Errorf("failed creating new cart in Firestore: %w", err)
@@ -161,7 +162,7 @@ func (cs *CartService) getShoppingCart(ctx context.Context, cartId string) (*pbc
 	// TODO: use a query to get everything is a single round trip
 
 	// Ask the firestore client for the specified cart
-	ref := cs.fsClient.Doc(storedCart.StoreRefPath())
+	ref := cs.FsClient.Doc(storedCart.StoreRefPath())
 	snap, err := cs.drProxy.Get(ref, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve cart snapshot with ID %s: %w", cartId, err)
@@ -194,7 +195,7 @@ func (cs *CartService) getShoppingCart(ctx context.Context, cartId string) (*pbc
 func (cs *CartService) getDeliveryAddress(ctx context.Context, cart *schema.ShoppingCart) (*types.PostalAddress, error) {
 
 	// Ask the firestore client for the delivery address (if there is one)
-	ref := cs.fsClient.Doc(cart.DeliveryAddressPath())
+	ref := cs.FsClient.Doc(cart.DeliveryAddressPath())
 	snap, err := cs.drProxy.Get(ref, ctx)
 	if err == nil {
 
@@ -270,7 +271,7 @@ func (cs *CartService) SetDeliveryAddress(ctx context.Context, req *pbcart.SetDe
 
 	// Store the delivery address as a child of the cart in the firestore
 	deliveryAddress := types.PostalAddressFromPB(req.DeliveryAddress)
-	ref := cs.fsClient.Doc(cart.DeliveryAddressPath())
+	ref := cs.FsClient.Doc(cart.DeliveryAddressPath())
 	_, err := cs.drProxy.Set(ref, ctx, deliveryAddress)
 	if err != nil {
 		err = fmt.Errorf("failed setting delivery address to firestore for cart: %w", err)
@@ -311,7 +312,7 @@ func (cs *CartService) AddItemToShoppingCart(ctx context.Context, req *pbcart.Ad
 	item := schema.ShoppingCartItemFromPB(req.Item)
 
 	// Store the item as a child of the cart
-	ref := cs.fsClient.Doc(item.StoreRefPath())
+	ref := cs.FsClient.Doc(item.StoreRefPath())
 	_, err := cs.drProxy.Set(ref, ctx, item)
 	if err != nil {
 		err = fmt.Errorf("failed setting cart item to firestore for cart: %w", err)
@@ -344,7 +345,7 @@ func (cs *CartService) RemoveItemFromShoppingCart(ctx context.Context, req *pbca
 	}
 
 	// Instruct Firestore to remove the item with extreme prejudice
-	ref := cs.fsClient.Doc(target.StoreRefPath())
+	ref := cs.FsClient.Doc(target.StoreRefPath())
 	_, err := cs.drProxy.Delete(ref, ctx)
 	if err != nil {
 		err = fmt.Errorf("failed deleting cart item from firestore: %w", err)
@@ -405,7 +406,7 @@ func (cs *CartService) closeCart(ctx context.Context, cartId string, closedState
 
 	// Ask the firestore client for the specified cart
 	storedCart := &schema.ShoppingCart{Id: cartId}
-	ref := cs.fsClient.Doc(storedCart.StoreRefPath())
+	ref := cs.FsClient.Doc(storedCart.StoreRefPath())
 	snap, err := cs.drProxy.Get(ref, ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve cart snapshot with ID %s: %w", cartId, err)

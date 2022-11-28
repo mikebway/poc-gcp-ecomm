@@ -4,7 +4,7 @@ package mikebway.order;
 
 import "google/type/timestamp.proto";
 import "mikebway/types/address.proto";
-import "mikebway/order/orderitem.proto";
+import "mikebway/order/item.proto";
 import "mikebway/types/person.proto";
 
 option go_package = "github.com/mikebway/poc-gcp-ecomm/pb/order";

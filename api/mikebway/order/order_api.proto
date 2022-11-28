@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package cart;
+
+import "google/type/timestamp.proto";
+import "mikebway/order/order.proto";
+
+option go_package = "github.com/mikebway/poc-gcp-ecomm/pb/order";
+
+// All of the API methods for the order service are declared here
+service OrderAPI {
+
+    // Get a specified order
+    rpc GetOrderByID(GetOrderByIDRequest) returns (GetOrderByIDResponse) {};
+
+    // Get a list of orders matching some criteria
+    rpc GetOrders(GetOrdersRequest) returns (GetOrdersResponse) {};
+}
+
+// Request parameters for the CreateShoppingCart API
+message GetOrderByIDRequest {
+
+    // REQUIRED. The UUID ID of the order to be retrieved
+    string order_id = 1;
+}
+
+// Response parameters for the CreateShoppingCart API
+message GetOrderByIDResponse {
+
+    // The order requested
+    mikebway.order.Order order = 1;
+}
+
+// Request parameters for the GetShoppingCartByID API
+//
+// See https://cloud.google.com/apis/design/design_patterns
+message GetOrdersRequest {
+
+    // REQUIRED. The earliest order submission time for which orders are to be returned.
+    // Submission times may be equal to or greater than this.
+    google.protobuf.Timestamp start_time = 1;
+
+    // REQUIRED. The order submission time after which orders are not to be returned
+    // Submission times must be less than this.
+    google.protobuf.Timestamp end_time = 2;
+
+    // REQUIRED. The maximum number of result to be returned in a single response.
+    //
+    // Must be between 1 and 100.
+    int32 page_size = 3;
+
+    // OPTIONAL. Required for second and subsequent requests, a marker token used to identify where the
+    // next page of results should begin within the overall result set.
+    //
+    // All other parameters should be the same as in previous requests otherwise the results shall
+    // be no deterministic.
+    string page_token = 4;
+
+    // OPTIONAL. The family name of the person that entered the order
+    string family_name = 5;
+
+    // OPTIONAL. The given name of the person that entered the order
+    string given_name = 6;
+}
+
+// Response parameters for the GetShoppingCartByID API.
+//
+// The cart field shall be missing / empty if no match was wound for the given ID.
+message GetOrdersResponse {
+
+    // OPTIONAL. May not be present if the result set was empty.
+    //
+    // The list of orders in the current page of results.
+    repeated mikebway.order.Order orders = 1;
+
+    // OPTIONAL. May not be present if the result set was empty
+    //
+    // The token to be included to request the next page of results.
+    string next_page_token = 2;
+}
+

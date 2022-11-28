@@ -22,6 +22,7 @@ build: protobuf ## Build all the project components (invoking gcloud build)
 	$(info running build)
 	$(MAKE) -C cart build
 	$(MAKE) -C carttrigger build
+	$(MAKE) -C order build
 	$(MAKE) -C orderfromcart build
 
 .PHONY: deploy
@@ -29,6 +30,7 @@ deploy: build ## Deploy all project components to Google Cloud
 	$(info running deploy)
 	$(MAKE) -C cart deploy
 	$(MAKE) -C carttrigger deploy
+	$(MAKE) -C order test
 	$(MAKE) -C orderfromcart deploy
 
 .PHONY: test
@@ -36,6 +38,7 @@ test: protobuf ## Compile code and run unit tests locally on all components that
 	$(info running test)
 	$(MAKE) -C cart test
 	$(MAKE) -C carttrigger test
+	$(MAKE) -C order test
 	$(MAKE) -C orderfromcart test
 
 .PHONY: firestore

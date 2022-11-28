@@ -1,4 +1,4 @@
-package service
+package util
 
 import (
 	"cloud.google.com/go/firestore"
@@ -63,15 +63,15 @@ type DocumentIteratorProxy interface {
 type ItemCollGetterProxy struct {
 	ItemCollectionGetterProxy
 
-	// fsClient is the GCP Firestore client - it is thread safe and can be reused concurrently
-	fsClient *firestore.Client
+	// FsClient is the GCP Firestore client - it is thread safe and can be reused concurrently
+	FsClient *firestore.Client
 }
 
 // Items returns a collection reference proxy that allows the shopping cart items of the given cart
 // to be retrieved from Firestore.
 func (p *ItemCollGetterProxy) Items(cart *schema.ShoppingCart) ItemsCollectionProxy {
 	return &ItemsCollProxy{
-		ref: p.fsClient.Collection(cart.ItemCollectionPath()),
+		ref: p.FsClient.Collection(cart.ItemCollectionPath()),
 	}
 }
 
