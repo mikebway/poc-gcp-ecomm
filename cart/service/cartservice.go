@@ -6,10 +6,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/mikebway/poc-gcp-ecomm/cart/fsproxies"
 	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	"github.com/mikebway/poc-gcp-ecomm/types"
-	"github.com/mikebway/poc-gcp-ecomm/util"
 	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
@@ -44,16 +44,16 @@ type CartService struct {
 
 	// drProxy is used to allow unit tests to intercept firestore.DocumentRef function calls
 	// and insert errors etc. into the responses.
-	drProxy util.DocumentRefProxy
+	drProxy fsproxies.DocumentRefProxy
 
 	// dsProxy is used to allow unit tests to intercept firestore.DocumentSnapshot function calls
 	// and insert errors etc. into the responses.
-	dsProxy util.DocumentSnapshotProxy
+	dsProxy fsproxies.DocumentSnapshotProxy
 
 	// itemsGetterProxy is used to obtain an ItemsCollectionProxy for a given cart. Unit tests may
 	// substitute an alternative implementation this interface in order to be able to insert errors etc.
 	// into the responses of the ItemsCollectionProxy that the ItemCollectionGetterProxy returns.
-	itemsGetterProxy util.ItemCollectionGetterProxy
+	itemsGetterProxy fsproxies.ItemCollectionGetterProxy
 }
 
 // NewCartService is a factory method returning an instance of our shopping cart service.
@@ -62,8 +62,8 @@ func NewCartService() (*CartService, error) {
 	// Build our service instance here with our default, direct passthrough, interception proxies
 	// for firestore.DocumentRef and firestore.DocumentSnapshot function calls
 	svc := &CartService{
-		drProxy: &util.DocRefProxy{},
-		dsProxy: &util.DocSnapProxy{},
+		drProxy: &fsproxies.DocRefProxy{},
+		dsProxy: &fsproxies.DocSnapProxy{},
 	}
 
 	// Obtain a firestore client and stuff that in the service instance
@@ -84,7 +84,7 @@ func NewCartService() (*CartService, error) {
 	}
 
 	// Make the firestore client available to the cart item getter proxy
-	svc.itemsGetterProxy = &util.ItemCollGetterProxy{
+	svc.itemsGetterProxy = &fsproxies.ItemCollGetterProxy{
 		FsClient: svc.FsClient,
 	}
 

@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	svc "github.com/mikebway/poc-gcp-ecomm/cart/service"
-	"github.com/mikebway/poc-gcp-ecomm/util"
+	"github.com/mikebway/poc-gcp-ecomm/testutil"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"net"
@@ -38,7 +38,7 @@ func TestMainFailure(t *testing.T) {
 	svc.UnitTestNewCartServiceError = fmt.Errorf(errorMsg)
 
 	// Wrap a call to main() to capture its log output
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		main()
 	})
 
@@ -65,7 +65,7 @@ func TestDefaultInitialization(t *testing.T) {
 	var service *grpc.Server
 	var listener net.Listener
 	var err error
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		service, listener, err = initializeService()
 	})
 
@@ -102,7 +102,7 @@ func TestCustomPortInitialization(t *testing.T) {
 	var service *grpc.Server
 	var listener net.Listener
 	var err error
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		service, listener, err = initializeService()
 	})
 
@@ -140,7 +140,7 @@ func TestInvalidPortInitialization(t *testing.T) {
 	var service *grpc.Server
 	var listener net.Listener
 	var err error
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		service, listener, err = initializeService()
 	})
 
@@ -181,7 +181,7 @@ func TestNoCartServiceInitialization(t *testing.T) {
 	var service *grpc.Server
 	var listener net.Listener
 	var err error
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		service, listener, err = initializeService()
 	})
 

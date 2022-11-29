@@ -5,8 +5,8 @@ import (
 	"cloud.google.com/go/firestore"
 	"context"
 	"fmt"
+	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/fsproxies"
 	pborder "github.com/mikebway/poc-gcp-ecomm/pb/order"
-	cartsvc "github.com/mikebway/poc-gcp-ecomm/util"
 )
 
 var (

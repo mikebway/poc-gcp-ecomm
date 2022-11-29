@@ -10,7 +10,6 @@ import (
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	pbtypes "github.com/mikebway/poc-gcp-ecomm/pb/types"
 	"github.com/mikebway/poc-gcp-ecomm/types"
-	"github.com/mikebway/poc-gcp-ecomm/util"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	pbmoney "google.golang.org/genproto/googleapis/type/money"
@@ -175,7 +174,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	event := mockFirestoreEvent(checkedOutCartId)
 	ctx := context.Background()
 	var err error
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		err = UpdateTrigger(ctx, *event)
 	})
 
@@ -186,7 +185,7 @@ func TestHandlerHappyPath(t *testing.T) {
 
 	// Repeat a second time (would never happen for the same cart in real life) in order
 	// to exercise the already loaded paths of the cart service and pubsub client lazy loaders.
-	logged = util.CaptureLogging(func() {
+	logged = testutil.CaptureLogging(func() {
 		err = UpdateTrigger(ctx, *event)
 	})
 	req.Nil(err, "no error was expected on second run: %v", err)
@@ -209,7 +208,7 @@ func TestNotCheckedOut(t *testing.T) {
 	// Submit the FirestoreEvent to the handler while capturing its log output
 	ctx := context.Background()
 	var err error
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		err = UpdateTrigger(ctx, *event)
 	})
 
@@ -233,7 +232,7 @@ func TestCartNotExist(t *testing.T) {
 	event := mockFirestoreEvent(cartId)
 	ctx := context.Background()
 	var err error
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		err = UpdateTrigger(ctx, *event)
 	})
 
@@ -265,7 +264,7 @@ func TestPublishError(t *testing.T) {
 	event := mockFirestoreEvent(checkedOutCartId)
 	ctx := context.Background()
 	var err error
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		err = UpdateTrigger(ctx, *event)
 	})
 

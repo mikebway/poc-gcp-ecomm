@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/mikebway/poc-gcp-ecomm/util"
 	pubsubapi "google.golang.org/api/pubsub/v1"
 	"io"
 	"net/http"
@@ -90,7 +89,7 @@ func TestOrderFromCartHappyPath(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		OrderFromCart(responseRecorder, httpRequest)
 	})
 
@@ -112,7 +111,7 @@ func TestInvalidPushRequest(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		OrderFromCart(responseRecorder, httpRequest)
 	})
 
@@ -133,7 +132,7 @@ func TestInvalidBase64(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		OrderFromCart(responseRecorder, httpRequest)
 	})
 
@@ -155,7 +154,7 @@ func TestWrongBinary(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		OrderFromCart(responseRecorder, httpRequest)
 	})
 
@@ -184,7 +183,7 @@ func TestNoCartID(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		OrderFromCart(responseRecorder, httpRequest)
 	})
 
@@ -209,7 +208,7 @@ func TestBodyReaderError(t *testing.T) {
 	responseRecorder := httptest.NewRecorder()
 
 	// Wrap a call to the target function so that we can capture its log output
-	logged := util.CaptureLogging(func() {
+	logged := testutil.CaptureLogging(func() {
 		OrderFromCart(responseRecorder, httpRequest)
 	})
 
