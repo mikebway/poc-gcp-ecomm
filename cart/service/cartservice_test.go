@@ -119,7 +119,7 @@ func TestCartCreateFailure(t *testing.T) {
 	req.Nil(err, "failed to obtain cart service: %v", err)
 
 	// Modify the cart service to return an error on any and every DocumentRef operation
-	service.drProxy = &util.UTDocRefProxy{err: mockError, allowCount: 0}
+	service.drProxy = &util.UTDocRefProxy{Err: mockError, AllowCount: 0}
 
 	// Attempt to create a new cart
 	createResp, err := service.CreateShoppingCart(ctx, &pbcart.CreateShoppingCartRequest{Shopper: buildMockShopper()})
@@ -156,7 +156,7 @@ func TestCartCorrupt(t *testing.T) {
 	req, ctx, service, cart := commonTestSetup(t)
 
 	// Modify the cart service to return a snapshot unmarshalling error every time we try to unmarshall a snapshot
-	service.dsProxy = &util.UTDocSnapProxy{err: mockError, allowCount: 0}
+	service.dsProxy = &util.UTDocSnapProxy{Err: mockError, AllowCount: 0}
 
 	// Ask for the cart again
 	getResp, err := service.GetShoppingCartByID(ctx, &pbcart.GetShoppingCartByIDRequest{CartId: cart.Id})
@@ -173,7 +173,7 @@ func TestCartItemCorrupt(t *testing.T) {
 	req, ctx, service, cart := commonTestSetup(t)
 
 	// Modify the cart service to return a snapshot unmarshalling error every time we try to unmarshall an item snapshot
-	service.itemsGetterProxy = &util.UTItemCollGetterProxy{FsClient: service.FsClient, err: mockError, allowCount: 0}
+	service.itemsGetterProxy = &util.UTItemCollGetterProxy{FsClient: service.FsClient, Err: mockError, AllowCount: 0}
 
 	// Ask for the cart again
 	getResp, err := service.GetShoppingCartByID(ctx, &pbcart.GetShoppingCartByIDRequest{CartId: cart.Id})
@@ -238,7 +238,7 @@ func TestDeliveryAddressSetFailure(t *testing.T) {
 	req, ctx, service, cart := commonTestSetup(t)
 
 	// Modify the cart service to return an error on any and every DocumentRef operation
-	service.drProxy = &util.UTDocRefProxy{err: mockError, allowCount: 0}
+	service.drProxy = &util.UTDocRefProxy{Err: mockError, AllowCount: 0}
 
 	// Add a delivery address to Harry Potter's cart
 	deliveryAddress := buildMockDeliveryAddress()
@@ -271,7 +271,7 @@ func TestDeliveryAddressGetFailure(t *testing.T) {
 	req.Nil(err, "should not have seen an error adding an address to Rupert's cart")
 
 	// Now, modify the cart service to return an error on the second get from Firestore, i.e. the address
-	service.drProxy = &util.UTDocRefProxy{err: mockError, allowCount: 1}
+	service.drProxy = &util.UTDocRefProxy{Err: mockError, AllowCount: 1}
 
 	// .. and try to get the cart
 	getResponse, err := service.GetShoppingCartByID(ctx, &pbcart.GetShoppingCartByIDRequest{CartId: cart.Id})
@@ -289,7 +289,7 @@ func TestDeliveryAddressSetResponseFailure(t *testing.T) {
 	req, ctx, service, cart := commonTestSetup(t)
 
 	// Modify the cart service to return an error only after the address has been set into the cart successfully
-	service.drProxy = &util.UTDocRefProxy{err: mockError, allowCount: 1}
+	service.drProxy = &util.UTDocRefProxy{Err: mockError, AllowCount: 1}
 
 	// Add a delivery address to Rupert Potter's cart
 	deliveryAddress := buildMockDeliveryAddress()
@@ -315,7 +315,7 @@ func TestDeliveryAddressCorrupt(t *testing.T) {
 	req.NotEmpty(cart.Id, "created cart should an ID")
 
 	// Modify the cart service to return an error only after the address has been set into the cart successfully
-	service.dsProxy = &util.UTDocSnapProxy{err: mockError, allowCount: 1}
+	service.dsProxy = &util.UTDocSnapProxy{Err: mockError, AllowCount: 1}
 
 	// Add a delivery address to Rupert Potter's cart
 	deliveryAddress := buildMockDeliveryAddress()
@@ -408,7 +408,7 @@ func TestAddItemFailure(t *testing.T) {
 	req, ctx, service, cart := commonTestSetup(t)
 
 	// Modify the cart service to return an error on any and every DocumentRef operation
-	service.drProxy = &util.UTDocRefProxy{err: mockError, allowCount: 0}
+	service.drProxy = &util.UTDocRefProxy{Err: mockError, AllowCount: 0}
 
 	// Define one cart items to add to the cart
 	item := buildMockCartItem(cartItemProductCode1)
@@ -428,7 +428,7 @@ func TestAddItemResponseFailure(t *testing.T) {
 	req, ctx, service, cart := commonTestSetup(t)
 
 	// Modify the cart service to return an error only after the item has been set into the cart successfully
-	service.drProxy = &util.UTDocRefProxy{err: mockError, allowCount: 1}
+	service.drProxy = &util.UTDocRefProxy{Err: mockError, AllowCount: 1}
 
 	// Define one cart items to add to the cart
 	item := buildMockCartItem(cartItemProductCode1)
@@ -462,7 +462,7 @@ func TestRemoveItemFailure(t *testing.T) {
 	req, ctx, service, cart, responseItem1 := addFirstItemToCart(t)
 
 	// Modify the cart service to return an error on any and every DocumentRef operation
-	service.drProxy = &util.UTDocRefProxy{err: mockError, allowCount: 0}
+	service.drProxy = &util.UTDocRefProxy{Err: mockError, AllowCount: 0}
 
 	// Now remove that item
 	removeResp, err := service.RemoveItemFromShoppingCart(ctx, &pbcart.RemoveItemFromShoppingCartRequest{CartId: cart.Id, ItemId: responseItem1.Id})
@@ -479,7 +479,7 @@ func TestRemoveItemResponseFailure(t *testing.T) {
 	req, ctx, service, cart, responseItem1 := addFirstItemToCart(t)
 
 	// Modify the cart service to return an error after the item deletion has been performed successfully
-	service.drProxy = &util.UTDocRefProxy{err: mockError, allowCount: 1}
+	service.drProxy = &util.UTDocRefProxy{Err: mockError, AllowCount: 1}
 
 	// Now remove that item
 	removeResp, err := service.RemoveItemFromShoppingCart(ctx, &pbcart.RemoveItemFromShoppingCartRequest{CartId: cart.Id, ItemId: responseItem1.Id})
@@ -540,7 +540,7 @@ func TestCheckoutOriginalCartUnmarshalFailure(t *testing.T) {
 	req, ctx, service, cart, _ := addFirstItemToCart(t)
 
 	// Modify the cart service to return an error the first time the code attempts to unmarshal a document snapshot
-	service.dsProxy = &util.UTDocSnapProxy{err: mockError, allowCount: 0}
+	service.dsProxy = &util.UTDocSnapProxy{Err: mockError, AllowCount: 0}
 
 	// Check the cart out and confirm all went well
 	response, err := service.CheckoutShoppingCart(ctx, &pbcart.CheckoutShoppingCartRequest{CartId: cart.Id})
@@ -556,7 +556,7 @@ func TestCheckoutFailure(t *testing.T) {
 	req, ctx, service, cart, _ := addFirstItemToCart(t)
 
 	// Modify the cart service to return an error the second time we try to use a document reference proxy
-	service.drProxy = &util.UTDocRefProxy{err: mockError, allowCount: 1}
+	service.drProxy = &util.UTDocRefProxy{Err: mockError, AllowCount: 1}
 
 	// Check the cart out and confirm all went well
 	response, err := service.CheckoutShoppingCart(ctx, &pbcart.CheckoutShoppingCartRequest{CartId: cart.Id})

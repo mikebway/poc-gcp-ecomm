@@ -230,7 +230,7 @@ func (cs *CartService) getCartItems(ctx context.Context, cart *schema.ShoppingCa
 
 	// Obtain an iterator that can walk the cart's item collection's documents. Under the hood, a "GetAll"
 	// operation retrieves all the item documents in a single round trip
-	docs := cs.itemsGetterProxy.Items(cart).GetAll(ctx)
+	docs := cs.itemsGetterProxy.Items(cart.ItemCollectionPath()).GetAll(ctx)
 
 	// Close the iterator when we are done with it regardless of whether we are successful or not
 	defer docs.Stop()

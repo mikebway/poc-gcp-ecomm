@@ -3,14 +3,13 @@ package util
 import (
 	"cloud.google.com/go/firestore"
 	"context"
-	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
 )
 
 // ItemCollectionGetterProxy defines an interface that the cart service can use to obtain an ItemsCollectionProxy
 // for a given cart. Unit tests may substitute an alternative implementation this interface in order to be able
 // to insert errors etc. into the responses of the ItemsCollectionProxy that the ItemCollectionGetterProxy returns.
 type ItemCollectionGetterProxy interface {
-	Items(cart *schema.ShoppingCart) ItemsCollectionProxy
+	Items(path string) ItemsCollectionProxy
 }
 
 // ItemsCollectionProxy defines the interface for a swappable junction that will allow us to maximize unit test
@@ -54,7 +53,7 @@ type DocumentSnapshotProxy interface {
 //
 // See https://pkg.go.dev/cloud.google.com/go/firestore#DocumentIterator
 type DocumentIteratorProxy interface {
-	Next(target *schema.ShoppingCartItem) error
+	Next(target interface{}) error
 	Stop()
 }
 
@@ -69,9 +68,9 @@ type ItemCollGetterProxy struct {
 
 // Items returns a collection reference proxy that allows the shopping cart items of the given cart
 // to be retrieved from Firestore.
-func (p *ItemCollGetterProxy) Items(cart *schema.ShoppingCart) ItemsCollectionProxy {
+func (p *ItemCollGetterProxy) Items(path string) ItemsCollectionProxy {
 	return &ItemsCollProxy{
-		ref: p.FsClient.Collection(cart.ItemCollectionPath()),
+		ref: p.FsClient.Collection(path),
 	}
 }
 
@@ -154,7 +153,7 @@ type DocIteratorProxy struct {
 
 // Next returns the next result. Its second return value is iterator.Done if there are no more results.
 // Once Next returns Done, all subsequent calls will return Done.
-func (p *DocIteratorProxy) Next(target *schema.ShoppingCartItem) error {
+func (p *DocIteratorProxy) Next(target interface{}) error {
 
 	// Ask the real iterator for the next document ref
 	snap, err := p.docsIterator.Next()
