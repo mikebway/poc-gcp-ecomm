@@ -1,4 +1,4 @@
-package fsproxies
+package service
 
 import (
 	"cloud.google.com/go/firestore"

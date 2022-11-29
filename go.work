@@ -3,9 +3,9 @@ go 1.19
 use (
 	cart
 	carttrigger
-	pb
-	types
-	testutil
-	orderfromcart
 	order
+	orderfromcart
+	pb
+	testutil
+    types
 )

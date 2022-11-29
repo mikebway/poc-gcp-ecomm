@@ -1,12 +1,12 @@
-package fsproxies
+package service
 
 import (
 	"cloud.google.com/go/firestore"
 	"context"
 )
 
-// ItemCollectionGetterProxy defines an interface that the cart service can use to obtain an ItemsCollectionProxy
-// for a given cart. Unit tests may substitute an alternative implementation this interface in order to be able
+// ItemCollectionGetterProxy defines an interface that a Firestore client service can use to obtain an ItemsCollectionProxy
+// for a given collection path. Unit tests may substitute an alternative implementation this interface in order to be able
 // to insert errors etc. into the responses of the ItemsCollectionProxy that the ItemCollectionGetterProxy returns.
 type ItemCollectionGetterProxy interface {
 	Items(path string) ItemsCollectionProxy

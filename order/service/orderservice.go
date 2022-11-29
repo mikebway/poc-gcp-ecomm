@@ -5,7 +5,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"context"
 	"fmt"
-	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/fsproxies"
+	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/service"
 	pborder "github.com/mikebway/poc-gcp-ecomm/pb/order"
 )
 

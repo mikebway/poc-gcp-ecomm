@@ -8,7 +8,6 @@ require (
 	github.com/mikebway/poc-gcp-ecomm/order v0.0.0-20221123214304-54df30b09641
 	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20221127215024-4a9112fd6e49
 	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20221127215024-4a9112fd6e49
-	github.com/mikebway/poc-gcp-ecomm/util v0.0.0-20221127215024-4a9112fd6e49
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.23.0
 	google.golang.org/api v0.103.0
@@ -33,7 +32,7 @@ require (
 	golang.org/x/text v0.4.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c // indirect
-	google.golang.org/grpc v1.50.1 // indirect
+	google.golang.org/grpc v1.51.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

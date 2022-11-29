@@ -9,6 +9,7 @@ import (
 	"github.com/mikebway/poc-gcp-ecomm/cart/service"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	pbtypes "github.com/mikebway/poc-gcp-ecomm/pb/types"
+	"github.com/mikebway/poc-gcp-ecomm/testutil"
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"

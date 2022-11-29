@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/mikebway/poc-gcp-ecomm/cart/fsproxies"
 	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	"github.com/mikebway/poc-gcp-ecomm/types"
@@ -44,16 +43,16 @@ type CartService struct {
 
 	// drProxy is used to allow unit tests to intercept firestore.DocumentRef function calls
 	// and insert errors etc. into the responses.
-	drProxy fsproxies.DocumentRefProxy
+	drProxy DocumentRefProxy
 
 	// dsProxy is used to allow unit tests to intercept firestore.DocumentSnapshot function calls
 	// and insert errors etc. into the responses.
-	dsProxy fsproxies.DocumentSnapshotProxy
+	dsProxy DocumentSnapshotProxy
 
 	// itemsGetterProxy is used to obtain an ItemsCollectionProxy for a given cart. Unit tests may
 	// substitute an alternative implementation this interface in order to be able to insert errors etc.
 	// into the responses of the ItemsCollectionProxy that the ItemCollectionGetterProxy returns.
-	itemsGetterProxy fsproxies.ItemCollectionGetterProxy
+	itemsGetterProxy ItemCollectionGetterProxy
 }
 
 // NewCartService is a factory method returning an instance of our shopping cart service.
@@ -62,8 +61,8 @@ func NewCartService() (*CartService, error) {
 	// Build our service instance here with our default, direct passthrough, interception proxies
 	// for firestore.DocumentRef and firestore.DocumentSnapshot function calls
 	svc := &CartService{
-		drProxy: &fsproxies.DocRefProxy{},
-		dsProxy: &fsproxies.DocSnapProxy{},
+		drProxy: &DocRefProxy{},
+		dsProxy: &DocSnapProxy{},
 	}
 
 	// Obtain a firestore client and stuff that in the service instance
@@ -84,7 +83,7 @@ func NewCartService() (*CartService, error) {
 	}
 
 	// Make the firestore client available to the cart item getter proxy
-	svc.itemsGetterProxy = &fsproxies.ItemCollGetterProxy{
+	svc.itemsGetterProxy = &ItemCollGetterProxy{
 		FsClient: svc.FsClient,
 	}
 

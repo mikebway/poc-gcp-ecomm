@@ -81,6 +81,9 @@ significant locations:
 │                       message schema. This is referenced by service modules to facilitate
 │                       implementation of the gRPC APIs. 
 │ 
+├── testutil        <-- Go library module intended solely to support unit testing of other  
+│                       modules.
+│ 
 ├── types           <-- Go library module implementing shared structure types such as PostalAddress, 
 │                       Person, Timestamp, etc.
 │ 
