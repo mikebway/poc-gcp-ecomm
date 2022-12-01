@@ -17,6 +17,17 @@ help: ## List of available commands
 	$(info NOTE The 'build' step invokes gcloud build and requires that the full project source be first committed and pushed to GitHub)
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
+.PHONY: protobuf
+protobuf: ${GO_SERVICE_FILES} ## Compile the protocol buffer / gRPC schema files
+
+.PHONY: test
+test: protobuf ## Compile code and run unit tests locally on all components that support them
+	$(info running test)
+	$(MAKE) -C cart test
+	$(MAKE) -C carttrigger test
+	$(MAKE) -C order test
+	$(MAKE) -C orderfromcart test
+
 .PHONY: build
 build: protobuf ## Build all the project components (invoking gcloud build)
 	$(info running build)
@@ -33,32 +44,24 @@ deploy: build ## Deploy all project components to Google Cloud
 	$(MAKE) -C order test
 	$(MAKE) -C orderfromcart deploy
 
-.PHONY: test
-test: protobuf ## Compile code and run unit tests locally on all components that support them
-	$(info running test)
-	$(MAKE) -C cart test
-	$(MAKE) -C carttrigger test
-	$(MAKE) -C order test
-	$(MAKE) -C orderfromcart test
-
 .PHONY: firestore
 firestore: ## Run the Firestore emulator
 	gcloud emulators firestore start --host-port=[::1]:8219 --project=poc-gcp-ecomm
-
-.PHONY: stop-firestore
-stop-firestore: ## Shutdown the Firestore emulator if it is running
-	ps aux | grep firestore | grep java | sort | head -n 1 | awk '{print $$2}' | xargs kill -9
 
 .PHONY: pubsub
 pubsub: ## Run the Firestore emulator
 	gcloud beta emulators pubsub start --host-port=[::1]:8085 --project=poc-gcp-ecomm
 
+.PHONY: stop-firestore
+stop-firestore: ## Shutdown the Firestore emulator if it is running
+	ps aux | grep firestore | grep java | sort | head -n 1 | awk '{print $$2}' | xargs kill -9
+
 .PHONY: stop-pubsub
 stop-pubsub: ## Shutdown the Firestore emulator if it is running
 	ps aux | grep pubsub | grep java | sort | head -n 1 | awk '{print $$2}' | xargs kill -9
 
-.PHONY: protobuf
-protobuf: ${GO_SERVICE_FILES} ## Compile the protocol buffer / gRPC schema files
+.PHONY: stop-all
+stop-all: stop-firestore stop-pubsub ## Shutdown all gcloud emulators
 
 ${GO_SERVICE_FILES}: $(PROTO_SOURCES) ## Generate the Cart gRPC Go source code
 	$(info generating protocol buffer and gRPC service code)
