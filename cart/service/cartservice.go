@@ -107,19 +107,19 @@ func (cs *CartService) CreateShoppingCart(ctx context.Context, req *pbcart.Creat
 		Status:       schema.CsOpen,
 		Shopper:      types.PersonFromPB(req.Shopper),
 	}
-	l.Info("storing new cart", zap.String("CartId", storableCart.Id))
+	l.Info("storing new cart", zap.String("cartId", storableCart.Id))
 
 	// Store the empty new cart in the firestore
 	ref := cs.FsClient.Doc(storableCart.StoreRefPath())
 	_, err := cs.drProxy.Create(ref, ctx, storableCart)
 	if err != nil {
 		err = fmt.Errorf("failed creating new cart in Firestore: %w", err)
-		l.Error(err.Error(), zap.String("CartId", storableCart.Id))
+		l.Error(err.Error(), zap.String("cartId", storableCart.Id))
 		return nil, err
 	}
 
 	// All good, log our joy and return the protocol buffer transliteration of our shiny new cart
-	l.Info("new cart stored successfully", zap.String("CartId", storableCart.Id), zap.String("path", ref.Path))
+	l.Info("new cart stored successfully", zap.String("cartId", storableCart.Id), zap.String("path", ref.Path))
 	return &pbcart.CreateShoppingCartResponse{
 		Cart: storableCart.AsPBShoppingCart(),
 	}, nil
@@ -128,9 +128,9 @@ func (cs *CartService) CreateShoppingCart(ctx context.Context, req *pbcart.Creat
 // GetShoppingCartByID retrieves a cart by its UUID ID.
 func (cs *CartService) GetShoppingCartByID(ctx context.Context, req *pbcart.GetShoppingCartByIDRequest) (*pbcart.GetShoppingCartByIDResponse, error) {
 
-	// Obtain a shortcut handle on our globally configured logger
+	// Obtain a shortcut handle on our globally configured logger and log some context information
 	l := zap.L()
-	l.Info("retrieving cart", zap.String("CartId", req.CartId))
+	l.Info("retrieving cart", zap.String("cartId", req.CartId))
 
 	// Have our internal sibling do all the hard work
 	pbCart, err := cs.getShoppingCart(ctx, req.CartId)
@@ -139,7 +139,7 @@ func (cs *CartService) GetShoppingCartByID(ctx context.Context, req *pbcart.GetS
 	}
 
 	// All good, log our joy and return the protocol buffer transliteration of our retrieved cart
-	l.Info("cart retrieved successfully", zap.String("CartId", req.CartId))
+	l.Info("cart retrieved successfully", zap.String("cartId", req.CartId))
 	return &pbcart.GetShoppingCartByIDResponse{
 		Cart: pbCart,
 	}, nil
@@ -152,7 +152,7 @@ func (cs *CartService) getShoppingCart(ctx context.Context, cartId string) (*pbc
 
 	// Obtain a shortcut handle on our globally configured logger
 	l := zap.L()
-	l.Info("retrieving cart", zap.String("CartId", cartId))
+	l.Info("retrieving cart", zap.String("cartId", cartId))
 
 	// Form a cart structure to receive the data from the store
 	storedCart := &schema.ShoppingCart{Id: cartId}
@@ -263,7 +263,7 @@ func (cs *CartService) SetDeliveryAddress(ctx context.Context, req *pbcart.SetDe
 
 	// Obtain a shortcut handle on our globally configured logger
 	l := zap.L()
-	l.Info("setting delivery address", zap.String("CartId", req.CartId))
+	l.Info("setting delivery address", zap.String("cartId", req.CartId))
 
 	// Form a skeleton cart representation that we can query for the delivery address path
 	cart := &schema.ShoppingCart{Id: req.CartId}
@@ -274,12 +274,12 @@ func (cs *CartService) SetDeliveryAddress(ctx context.Context, req *pbcart.SetDe
 	_, err := cs.drProxy.Set(ref, ctx, deliveryAddress)
 	if err != nil {
 		err = fmt.Errorf("failed setting delivery address to firestore for cart: %w", err)
-		l.Error(err.Error(), zap.String("CartId", req.CartId))
+		l.Error(err.Error(), zap.String("cartId", req.CartId))
 		return nil, err
 	}
 
 	// All good, log our joy and return the protocol buffer transliteration of our retrieved cart
-	l.Info("delivery address set successfully", zap.String("CartId", req.CartId))
+	l.Info("delivery address set successfully", zap.String("cartId", req.CartId))
 
 	// Have our internal sibling do all the remaining work
 	pbCart, err := cs.getShoppingCart(ctx, req.CartId)
@@ -303,7 +303,7 @@ func (cs *CartService) AddItemToShoppingCart(ctx context.Context, req *pbcart.Ad
 
 	// Form a unique ID for the new cart item and include that in our entry log statement
 	itemId := uuid.New().String()
-	l.Info("adding cart item", zap.String("CartId", req.CartId), zap.String("ItemID", itemId))
+	l.Info("adding cart item", zap.String("cartId", req.CartId), zap.String("itemId", itemId))
 
 	// Configure the ID values for this new item in the cart then transform it to our stored struct type
 	req.Item.Id = itemId
@@ -315,12 +315,12 @@ func (cs *CartService) AddItemToShoppingCart(ctx context.Context, req *pbcart.Ad
 	_, err := cs.drProxy.Set(ref, ctx, item)
 	if err != nil {
 		err = fmt.Errorf("failed setting cart item to firestore for cart: %w", err)
-		l.Error(err.Error(), zap.String("CartId", item.CartId), zap.String("ItemID", item.Id))
+		l.Error(err.Error(), zap.String("cartId", item.CartId), zap.String("itemId", item.Id))
 		return nil, err
 	}
 
 	// All good, log our joy before returning the protocol buffer transliteration of our retrieved cart
-	l.Info("cart item added successfully", zap.String("CartId", item.CartId), zap.String("ItemID", item.Id))
+	l.Info("cart item added successfully", zap.String("cartId", item.CartId), zap.String("itemId", item.Id))
 
 	// Have our internal sibling do all the remaining work to return the complete cart as it now stands
 	pbCart, err := cs.getShoppingCart(ctx, req.CartId)
@@ -335,7 +335,7 @@ func (cs *CartService) RemoveItemFromShoppingCart(ctx context.Context, req *pbca
 
 	// Obtain a shortcut handle on our globally configured logger then log what we are about to do
 	l := zap.L()
-	l.Info("removing cart item", zap.String("CartId", req.CartId), zap.String("ItemID", req.ItemId))
+	l.Info("removing cart item", zap.String("cartId", req.CartId), zap.String("itemID", req.ItemId))
 
 	// Use a partial item structure to form the key of the target item to be deleted
 	target := schema.ShoppingCartItem{
@@ -348,7 +348,7 @@ func (cs *CartService) RemoveItemFromShoppingCart(ctx context.Context, req *pbca
 	_, err := cs.drProxy.Delete(ref, ctx)
 	if err != nil {
 		err = fmt.Errorf("failed deleting cart item from firestore: %w", err)
-		l.Error(err.Error(), zap.String("CartId", target.CartId), zap.String("ItemID", target.Id))
+		l.Error(err.Error(), zap.String("cartId", target.CartId), zap.String("itemId", target.Id))
 		return nil, err
 	}
 
@@ -368,7 +368,7 @@ func (cs *CartService) CheckoutShoppingCart(ctx context.Context, req *pbcart.Che
 
 	// Obtain a shortcut handle on our globally configured logger then log what we are about to do
 	l := zap.L()
-	l.Info("checking out cart", zap.String("CartId", req.CartId))
+	l.Info("checking out cart", zap.String("cartId", req.CartId))
 
 	// Check out and abandon are almost the same data operation except for the status value and log messaging
 	pbCart, err := cs.closeCart(ctx, req.CartId, schema.CsCheckedOut)
@@ -377,7 +377,7 @@ func (cs *CartService) CheckoutShoppingCart(ctx context.Context, req *pbcart.Che
 	}
 
 	// All done, all happy
-	l.Info("cart checked out successfully", zap.String("CartId", req.CartId))
+	l.Info("cart checked out successfully", zap.String("cartId", req.CartId))
 	return &pbcart.CheckoutShoppingCartResponse{Cart: pbCart}, nil
 }
 
@@ -387,7 +387,7 @@ func (cs *CartService) AbandonShoppingCart(ctx context.Context, req *pbcart.Aban
 
 	// Obtain a shortcut handle on our globally configured logger then log what we are about to do
 	l := zap.L()
-	l.Info("abandoning out cart", zap.String("CartId", req.CartId))
+	l.Info("abandoning out cart", zap.String("cartId", req.CartId))
 
 	// Check out and abandon are almost the same data operation except for the status value and log messaging
 	pbCart, err := cs.closeCart(ctx, req.CartId, schema.CsAbandonedByUser)
@@ -396,7 +396,7 @@ func (cs *CartService) AbandonShoppingCart(ctx context.Context, req *pbcart.Aban
 	}
 
 	// All done, all happy
-	l.Info("cart abandoned successfully", zap.String("CartId", req.CartId))
+	l.Info("cart abandoned successfully", zap.String("cartId", req.CartId))
 	return &pbcart.AbandonShoppingCartResponse{Cart: pbCart}, nil
 }
 
@@ -434,7 +434,7 @@ func (cs *CartService) closeCart(ctx context.Context, cartId string, closedState
 	_, err = cs.drProxy.Set(ref, ctx, storedCart)
 	if err != nil {
 		err = fmt.Errorf("failed putting updated cart status to datastore with ID %s: %w", cartId, err)
-		zap.L().Error(err.Error(), zap.String("CartId", storedCart.Id))
+		zap.L().Error(err.Error(), zap.String("cartId", storedCart.Id))
 		return nil, err
 	}
 

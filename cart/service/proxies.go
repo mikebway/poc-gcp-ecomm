@@ -23,6 +23,14 @@ type ItemsCollectionProxy interface {
 	GetAll(ctx context.Context) DocumentIteratorProxy
 }
 
+// QueryExecutionProxy defines an interface that a Firestore client service can use to obtain an DocumentIteratorProxy
+// to walk the results of given for a given firestore.Query. Unit tests may substitute an alternative implementation
+// this interface in order to be able to insert errors etc. into the responses of the DocumentIteratorProxy that the
+// QueryExecutionProxy returns.
+type QueryExecutionProxy interface {
+	Documents(ctx context.Context, query firestore.Query) DocumentIteratorProxy
+}
+
 // DocumentRefProxy defines the interface for a swappable junction that will allow us to maximize unit test coverage
 // by intercepting calls to firestore.DocumentRef methods and having them return mock errors. The default
 // production implementation of the interface will add a couple of nanoseconds of delay to normal operation but that
@@ -66,7 +74,7 @@ type ItemCollGetterProxy struct {
 	FsClient *firestore.Client
 }
 
-// Items returns a collection reference proxy that allows the shopping cart items of the given cart
+// Items returns a collection reference proxy that allows the items of the given collection
 // to be retrieved from Firestore.
 func (p *ItemCollGetterProxy) Items(path string) ItemsCollectionProxy {
 	return &ItemsCollProxy{
@@ -85,10 +93,26 @@ type ItemsCollProxy struct {
 }
 
 // GetAll is a wrapper around the firestore.CollectionRef Documents function (actually the firestore.Query Documents
-// function) that will return an iterator over shopping cart items from a Firestore cart representation.
+// function) that will return an iterator over the items from a Firestore collection or query representation.
 func (p *ItemsCollProxy) GetAll(ctx context.Context) DocumentIteratorProxy {
 	return &DocIteratorProxy{
 		docsIterator: p.ref.Documents(ctx),
+		dsProxy:      &DocSnapProxy{},
+	}
+}
+
+// QueryExecProxy implements a wrapper function around firestore.Query that will return an iterator over items
+// that match the query.
+type QueryExecProxy struct {
+	QueryExecutionProxy
+}
+
+// Documents returns a DocumentIteratorProxy wrapping the results of the given query. Unit test implementations
+// of this function can be programmed to return an iterator that can insert errors into the flow but this
+// production ready implementation returns a transparent passthrough iterator.
+func (q *QueryExecProxy) Documents(ctx context.Context, query firestore.Query) DocumentIteratorProxy {
+	return &DocIteratorProxy{
+		docsIterator: query.Documents(ctx),
 		dsProxy:      &DocSnapProxy{},
 	}
 }

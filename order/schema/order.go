@@ -3,8 +3,16 @@
 package schema
 
 import (
+	pborder "github.com/mikebway/poc-gcp-ecomm/pb/order"
+	pbtypes "github.com/mikebway/poc-gcp-ecomm/pb/types"
 	"github.com/mikebway/poc-gcp-ecomm/types"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
+)
+
+const (
+	// OrderCollection names the firestore collection under which all of our documents are stored
+	OrderCollection = "orders"
 )
 
 // Order represents the permanent record of what a customer has purchased. An order is derived from a shopping cart
@@ -30,7 +38,7 @@ type Order struct {
 	DeliveryAddress *types.PostalAddress `firestore:"deliveryAddress,omitempty" json:"deliveryAddress,omitempty"`
 
 	// OrderItems is the list of one to many items that make up the potential order
-	OrderItems []*OrderItem `firestore:"cartItems" json:"cartItems"`
+	OrderItems []*OrderItem `firestore:"orderItems" json:"orderItems"`
 }
 
 // OrderItem represents a single entry in an order. An order will contain one
@@ -55,4 +63,57 @@ type OrderItem struct {
 	// UnitPrice is the price that the customer was shown for a single item
 	// when they selected the item for their cart.
 	UnitPrice *types.Money `firestore:"unitPrice" json:"unitPrice"`
+}
+
+// StoreRefPath returns the string representation of the document reference path for this ShoppingCart.
+func (o *Order) StoreRefPath() string {
+	return OrderCollection + "/" + o.Id
+}
+
+// AsPBOrder returns the protocol buffer representation of this order.
+func (o *Order) AsPBOrder() *pborder.Order {
+
+	// Creation time should be set, but we will play it safe just the same
+	var pbSubmissionTime *timestamppb.Timestamp
+	if !o.SubmissionTime.IsZero() {
+		pbSubmissionTime = timestamppb.New(o.SubmissionTime)
+	}
+
+	// Only convert the shopper if they have been defined in the cart
+	// That should always be the case but we will play defensively.
+	var pbOrderedBy *pbtypes.Person
+	if o.OrderedBy != nil {
+		pbOrderedBy = o.OrderedBy.AsPBPerson()
+	}
+
+	// Only convert the delivery address if that has been defined in the cart
+	var pbAddress *pbtypes.PostalAddress
+	if o.DeliveryAddress != nil {
+		pbAddress = o.DeliveryAddress.AsPBPostalAddress()
+	}
+
+	// Finally, add the cart items (if any)
+	pbItems := make([]*pborder.OrderItem, len(o.OrderItems))
+	for i, item := range o.OrderItems {
+		pbItems[i] = item.AsPBCartItem()
+	}
+
+	// Return a populated protocol buffer version of the cart
+	return &pborder.Order{
+		Id:              o.Id,
+		SubmissionTime:  pbSubmissionTime,
+		OrderedBy:       pbOrderedBy,
+		DeliveryAddress: pbAddress,
+		OrderItems:      pbItems,
+	}
+}
+
+// AsPBCartItem returns the protocol buffer representation of this cart item.
+func (item *OrderItem) AsPBCartItem() *pborder.OrderItem {
+	return &pborder.OrderItem{
+		Id:          item.Id,
+		ProductCode: item.ProductCode,
+		Quantity:    item.Quantity,
+		UnitPrice:   item.UnitPrice.AsPBMoney(),
+	}
 }
