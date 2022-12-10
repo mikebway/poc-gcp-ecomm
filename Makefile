@@ -27,6 +27,7 @@ test: protobuf ## Compile code and run unit tests locally on all components that
 	$(MAKE) -C carttrigger test
 	$(MAKE) -C order test
 	$(MAKE) -C orderfromcart test
+	$(MAKE) -C types test
 
 .PHONY: build
 build: protobuf ## Build all the project components (invoking gcloud build)
