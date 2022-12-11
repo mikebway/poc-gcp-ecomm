@@ -95,7 +95,7 @@ func (o *Order) AsPBOrder() *pborder.Order {
 	// Finally, add the cart items (if any)
 	pbItems := make([]*pborder.OrderItem, len(o.OrderItems))
 	for i, item := range o.OrderItems {
-		pbItems[i] = item.AsPBCartItem()
+		pbItems[i] = item.AsPBOrderItem()
 	}
 
 	// Return a populated protocol buffer version of the cart
@@ -108,8 +108,8 @@ func (o *Order) AsPBOrder() *pborder.Order {
 	}
 }
 
-// AsPBCartItem returns the protocol buffer representation of this cart item.
-func (item *OrderItem) AsPBCartItem() *pborder.OrderItem {
+// AsPBOrderItem returns the protocol buffer representation of this cart item.
+func (item *OrderItem) AsPBOrderItem() *pborder.OrderItem {
 	return &pborder.OrderItem{
 		Id:          item.Id,
 		ProductCode: item.ProductCode,

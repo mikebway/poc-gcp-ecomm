@@ -12,6 +12,8 @@ option go_package = "github.com/mikebway/poc-gcp-ecomm/pb/order";
 // An order represents the permanent record of what a customer has purchased. An order is derived from a shopping cart
 // upon checkout.
 message Order {
+  // TODO: Add version field (for the schema)
+
   // A UUID ID in hexadecimal string form - a unique ID for this order.
   // This will be set by the cart when the order is submitted.
   string id = 1;
