@@ -79,3 +79,9 @@ func (t *timestamp) GetTime() time.Time {
 func (t *timestamp) String() string {
 	return t.time.Format(time.RFC3339Nano)
 }
+
+// GetPBTimestamp returns the time value as a google.protobuf.Timestamp protocol
+// buffer value.
+func (t *timestamp) GetPBTimestamp() *timestamppb.Timestamp {
+	return timestamppb.New(t.time)
+}

@@ -48,6 +48,22 @@ func TestTimestampNow(t *testing.T) {
 	req.LessOrEqualf(utc.GetTime().Unix(), endTime.Unix(), "UTC time should have been less than or equal to our end time")
 }
 
+// TestGetPBTimestamp evaluates the GetPBTimestamp conversion method
+func TestGetPBTimestamp(t *testing.T) {
+
+	// The raw time now ...
+	startTime := time.Now()
+
+	// .Form a timestamp from that
+	timestamp := NewTimestamp(startTime)
+
+	// Ask for that in Protocol Buffer form
+	pbTimestamp := timestamp.GetPBTimestamp()
+
+	// Confirm that this has the same core value as our original time
+	require.Equal(t, startTime.Unix(), pbTimestamp.AsTime().Unix(), "protocol buffer time value does not match the original seed")
+}
+
 // TestTimestampFromRFC3339 evaluates the TimestampFromRFC3339 factory method when supplied with a known non-UTC time value.
 func TestTimestampFromRFC3339Nano(t *testing.T) {
 
