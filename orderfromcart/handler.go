@@ -32,8 +32,8 @@ type pushRequest struct {
 	Subscription string               `json:"subscription,omitempty"`
 }
 
-// OrderFromCart is Cloud Function the entry point. The payload of the HTTP request is a checked out shopping cart
-// expressed as a JSON string.
+// OrderFromCart is Cloud Function entry point. The payload of the HTTP request is a checked out shopping cart
+// expressed as a base64 encoded Protocol Buffer message wrapped in a JSON envelop.
 //
 // See https://cloud.google.com/pubsub/docs/push for documentation of the request body JSON content.
 func OrderFromCart(w http.ResponseWriter, r *http.Request) {
