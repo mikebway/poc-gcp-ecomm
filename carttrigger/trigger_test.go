@@ -202,7 +202,7 @@ func TestNotCheckedOut(t *testing.T) {
 	req := require.New(t)
 
 	// Configure a Firestore event where the "new value" status is not "checked out"
-	cartId := uuid.New().String()
+	cartId := uuid.NewString()
 	event := mockFirestoreEvent(cartId)
 	event.Value.Fields.Status.IntegerValue = strconv.FormatInt(int64(schema.CsAbandonedByUser), 10)
 
@@ -229,7 +229,7 @@ func TestCartNotExist(t *testing.T) {
 
 	// Configure a Firestore event where the cart ID won't be found when the trigger function
 	// tries to load the full cart.
-	cartId := uuid.New().String()
+	cartId := uuid.NewString()
 	event := mockFirestoreEvent(cartId)
 	ctx := context.Background()
 	var err error

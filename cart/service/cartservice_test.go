@@ -521,7 +521,7 @@ func TestCheckoutCartMissing(t *testing.T) {
 	req.Nil(err, "failed to obtain cart service: %v", err)
 
 	// Form the ID of a cart that we know cannot exist
-	cartId := uuid.New().String()
+	cartId := uuid.NewString()
 
 	// Check the cart out and confirm all went well
 	ctx := context.Background()
@@ -565,7 +565,7 @@ func TestCheckoutFailure(t *testing.T) {
 }
 
 // commonTestSetup helps us to be a little DRY (Don't Repeat Yourself) in this file, doing the steps that more
-// than have the unit test functions in here need to do before going on to anything else.
+// than half the unit test functions in here need to do before going on to anything else.
 func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *CartService, *pbcart.ShoppingCart) {
 
 	// Avoid having to pass t in to every assertion

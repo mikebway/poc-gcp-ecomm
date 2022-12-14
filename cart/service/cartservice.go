@@ -102,7 +102,7 @@ func (cs *CartService) CreateShoppingCart(ctx context.Context, req *pbcart.Creat
 
 	// Create the storable cart structure with a new unique ID
 	storableCart := &schema.ShoppingCart{
-		Id:           uuid.New().String(),
+		Id:           uuid.NewString(),
 		CreationTime: time.Now(),
 		Status:       schema.CsOpen,
 		Shopper:      types.PersonFromPB(req.Shopper),
@@ -179,6 +179,8 @@ func (cs *CartService) getShoppingCart(ctx context.Context, cartId string) (*pbc
 		return nil, err
 	}
 
+	// TODO: There should be a way to request all descendants in a single Firestore request
+	//       rather than geting the items separately
 	// Get the cart items
 	storedCart.CartItems, err = cs.getCartItems(ctx, storedCart)
 	if err != nil {
@@ -302,7 +304,7 @@ func (cs *CartService) AddItemToShoppingCart(ctx context.Context, req *pbcart.Ad
 	l := zap.L()
 
 	// Form a unique ID for the new cart item and include that in our entry log statement
-	itemId := uuid.New().String()
+	itemId := uuid.NewString()
 	l.Info("adding cart item", zap.String("cartId", req.CartId), zap.String("itemId", itemId))
 
 	// Configure the ID values for this new item in the cart then transform it to our stored struct type

@@ -13,6 +13,9 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
 	"hash"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (
@@ -167,19 +170,21 @@ func (os *OrderService) GetOrders(ctx context.Context, req *pborder.GetOrdersReq
 	os.logQuery(req)
 
 	// Adjust the page size if it is unreasonable
-	pageSize := int(req.PageSize)
-	if pageSize < 1 {
-		zap.L().Warn("negative page size adjusted to default", zap.Int("requested", pageSize), zap.Int("default", defaultPageSize))
-		pageSize = defaultPageSize
-	} else if pageSize < 100 {
-		zap.L().Warn("excessive page size adjusted to maximum", zap.Int("requested", pageSize), zap.Int("max", maxPageSize))
-		pageSize = maxPageSize
+	if req.PageSize < 1 {
+		zap.L().Warn("negative/zero page size adjusted to default", zap.Int32("requested", req.PageSize), zap.Int("default", defaultPageSize))
+		req.PageSize = defaultPageSize
+	} else if req.PageSize > maxPageSize {
+		zap.L().Warn("excessive page size adjusted to maximum", zap.Int32("requested", req.PageSize), zap.Int("max", maxPageSize))
+		req.PageSize = maxPageSize
 	}
 
 	// Start with the whole collection and build up the query from there
-	query := os.buildOrderQuery(os.FsClient.Collection(schema.OrderCollection).Query, req)
+	query, err := os.buildOrderQuery(os.FsClient.Collection(schema.OrderCollection).Query, req)
+	if err != nil {
+		return nil, err
+	}
 
-	// Run the query to the set of matching orders
+	// Run the query to the set of matching orders. Casting the page size is safe - we just checked that it lies between 1 and 100
 	orders, nextPageToken, err := os.executeQuery(ctx, query, int(req.PageSize))
 	if err != nil {
 		return nil, err
@@ -235,7 +240,8 @@ func (os *OrderService) executeQuery(ctx context.Context, query firestore.Query,
 	if orderCount >= pageSize {
 
 		// There could be more to load, use the last processed order's ID as our position marker
-		nextPageToken = orders[orderCount-1].Id
+		lastOrder := orders[orderCount-1]
+		nextPageToken = fmt.Sprintf("%x,%s", lastOrder.SubmissionTime.UnixNano(), orders[orderCount-1].Id)
 	}
 
 	// All is well if we reach this point
@@ -243,7 +249,8 @@ func (os *OrderService) executeQuery(ctx context.Context, query firestore.Query,
 }
 
 // buildOrderQuery translates the pborder.GetOrdersRequest parameters into filters on the given firestore.Query.
-func (os *OrderService) buildOrderQuery(query firestore.Query, req *pborder.GetOrdersRequest) firestore.Query {
+// Always check the error return value - a query is returned whether an error occurred or not.
+func (os *OrderService) buildOrderQuery(query firestore.Query, req *pborder.GetOrdersRequest) (firestore.Query, error) {
 
 	// Ignore documents that fall outside the time window first then narrow the result set down from there
 	// if the caller specified that mach in their request ...
@@ -254,10 +261,10 @@ func (os *OrderService) buildOrderQuery(query firestore.Query, req *pborder.GetO
 		query = query.Where("submissionTime", "<", req.GetEndTime().AsTime())
 	}
 	if len(req.FamilyName) > 0 {
-		query = query.Where("orderedBy.familyName", "=", req.FamilyName)
+		query = query.Where("orderedBy.familyName", "==", req.FamilyName)
 	}
 	if len(req.GivenName) > 0 {
-		query = query.Where("orderedBy.givenName", "=", req.GivenName)
+		query = query.Where("orderedBy.givenName", "==", req.GivenName)
 	}
 
 	// Order the results by submission time first, then by order ID (necessary for us to have a unique cursor position for paging)
@@ -266,14 +273,42 @@ func (os *OrderService) buildOrderQuery(query firestore.Query, req *pborder.GetO
 	// If a page token was specified, use that as the marker for the last document that has
 	// already been returned, i.e. start after that one.
 	if len(req.PageToken) > 0 {
-		query = query.StartAfter(req.PageToken)
+
+		// Split the page token into its two parts - there should be two parts, submission time and ID
+		afterTime, afterOrderId, err := splitPageToken(req.PageToken)
+		if err != nil {
+			return query, err
+		}
+
+		// Add the start after factors to our query
+		query = query.StartAfter(afterTime, afterOrderId)
 	}
 
 	// Limit the size of the result set to the page size
 	query = query.Limit(int(req.PageSize))
 
 	// All done
-	return query
+	return query, nil
+}
+
+// splitPageToken breaks a page token string into its time and order ID components.
+func splitPageToken(token string) (time.Time, string, error) {
+
+	// Split the page token into its two parts - there should be two parts
+	parts := strings.Split(token, ",")
+	if len(parts) == 2 {
+
+		// Convert the first part from a Unix time value to a time.Time
+		unixNanoTime, err := strconv.ParseInt(parts[0], 16, 64)
+		if err == nil {
+
+			// All looks good (as shallowly as we are bothering to look), return what we have
+			return time.Unix(0, unixNanoTime), parts[1], nil
+		}
+	}
+
+	// Only arrive here if the page token is invalid
+	return time.Time{}, "", fmt.Errorf("invalid page token: %s", token)
 }
 
 // logQuery writes a log entry documenting the attributes that make up a OrderService.GetOrders Firestore query.
