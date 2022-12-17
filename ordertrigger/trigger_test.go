@@ -26,9 +26,16 @@ const (
 	// FirestoreEmulatorHost defines the server name and port (in TCP6 terms) of the Firestore emulator
 	FirestoreEmulatorHost = "[::1]:8219"
 
-	// A timestamp string we can use to derive known time values. It will be used as the first submission time in the
-	// any orders we store.
-	timeString = "2022-10-11T10:23:19.000000000-06:00"
+	// EnvPubSubEmulator defines the environment variable name that is used to convey that the Pub/Sub emulator
+	// is running, should be used, and how to connect to it
+	EnvPubSubEmulator = "PUBSUB_EMULATOR_HOST"
+
+	// PubSubEmulatorHost defines the server name and port (in TCP6 terms) of the Pub/Sub emulator
+	PubSubEmulatorHost = "[::1]:8085"
+
+	// EnvPubSubProjectId defines the environment variable name that is used to convey which project the
+	// Pub/Sub emulator believes itself to be running under
+	EnvPubSubProjectId = "PUBSUB_PROJECT_ID"
 
 	// UnitTestGivenName is used for all given names for the ordering person for all unit test orders written
 	// to the Firestore emulator. It is used so that we can find and delete all orders we create in these unit
@@ -57,26 +64,22 @@ var (
 	// orderService allows unit tests to write populated orders to Firestore
 	orderService *service.OrderService
 
-	// ---
-
-	// Shopping order value types that cannot be declared as constants
-	shoppingOrderCreationTime time.Time
-	shoppingOrderClosedTime   time.Time
+	// The time our mock order was submitted
+	orderSubmissionTime time.Time
 
 	// Firestore value times
 	firestoreValueCreateTime time.Time
-	firestoreValueUpdateTime time.Time
 
-	// checkedOutOrderId is the ID of a order that we have written to Firestore so that it can be referenced
-	// in multiple unit tests rather than creating new carts every time.
-	checkedOutOrderId string
+	// storedOrderId is the ID of a order that we have written to Firestore so that it can be referenced
+	// in multiple unit tests rather than creating new orders every time.
+	storedOrderId string
 )
 
 // TestMain, if defined (it's optional), allows setup code to be run before and after the suite of unit tests
 // for this package.
 func TestMain(m *testing.M) {
 
-	// Ensure that our Firestore and Pub/Sub requests doe not get routed to the live project by mistake
+	// Ensure that our Firestore and Pub/Sub requests do not get routed to the live project by mistake
 	service.ProjectId = "demo-" + service.ProjectId
 	TopicProjectId = "demo-" + TopicProjectId
 
@@ -101,19 +104,12 @@ func TestMain(m *testing.M) {
 		zap.L().Panic("unable to create pubsub topic", zap.Error(err))
 	}
 
-	// Shopping order values
-	t, _ := types.TimestampFromRFC3339Nano(earlyTimeString)
-	shoppingOrderCreationTime = t.GetTime()
-	t, _ = types.TimestampFromRFC3339Nano(lateTimeString)
-	shoppingOrderClosedTime = t.GetTime()
+	// Set our order submission and slightly later Firestore document creation time values
+	firestoreValueCreateTime = time.Now()
+	orderSubmissionTime = firestoreValueCreateTime.Add(-500 * time.Millisecond)
 
-	// Firestore value times are closely but not exactly related to the order times
-	// We just make them a second apart here but in reality it would be much closer.
-	firestoreValueCreateTime = shoppingOrderCreationTime.Add(time.Second)
-	firestoreValueUpdateTime = shoppingOrderClosedTime.Add(time.Second)
-
-	// Make sure we have a checked out order in Firestore that we can reference in multiple tests
-	checkedOutOrderId = storeMockOrder(true)
+	// Build and store an order that we can use as a target in our tests
+	storedOrderId = storeMockOrder()
 
 	// Run all the unit tests
 	m.Run()
@@ -156,7 +152,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	req := require.New(t)
 
 	// Submit a known FirestoreEvent to the handler while capturing its log output
-	event := mockFirestoreEvent(checkedOutOrderId)
+	event := mockFirestoreEvent(storedOrderId)
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
@@ -165,8 +161,8 @@ func TestHandlerHappyPath(t *testing.T) {
 
 	// There should have been no errors and some straightforward log output
 	req.Nil(err, "no error was expected: %v", err)
-	req.Contains(logged, "published checked out order", "did not see happy path log message")
-	req.Contains(logged, checkedOutOrderId, "did not see order ID in log message")
+	req.Contains(logged, "published order", "did not see happy path log message")
+	req.Contains(logged, storedOrderId, "did not see order ID in log message")
 
 	// Repeat a second time (would never happen for the same order in real life) in order
 	// to exercise the already loaded paths of the order service and pubsub client lazy loaders.
@@ -174,8 +170,8 @@ func TestHandlerHappyPath(t *testing.T) {
 		err = UpdateTrigger(ctx, *event)
 	})
 	req.Nil(err, "no error was expected on second run: %v", err)
-	req.Contains(logged, "published checked out order", "did not see happy path log message on second run")
-	req.Contains(logged, checkedOutOrderId, "did not see order ID in log message on second run")
+	req.Contains(logged, "published order", "did not see happy path log message on second run")
+	req.Contains(logged, storedOrderId, "did not see order ID in log message on second run")
 }
 
 // TestOrderNotExist looks at what happens when a order update triggers the handler but the order in
@@ -221,7 +217,7 @@ func TestPublishError(t *testing.T) {
 	TopicId = "no-way-this-topic-id-matches-anything"
 
 	// Submit a checked out order FirestoreEvent to the handler while capturing its log output
-	event := mockFirestoreEvent(checkedOutOrderId)
+	event := mockFirestoreEvent(storedOrderId)
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
@@ -231,7 +227,7 @@ func TestPublishError(t *testing.T) {
 	// There should have been no errors and some straightforward log output
 	req.NotNil(err, "an error was expected")
 	req.Contains(logged, "pubsub publish failed", "did not see publish failure log message")
-	req.Contains(logged, checkedOutOrderId, "did not see order ID in log message")
+	req.Contains(logged, storedOrderId, "did not see order ID in log message")
 }
 
 // mockFirestoreEvent constructs a FirestoreEvent populated with known values that we can check in out unit tests.
@@ -253,7 +249,7 @@ func mockNewValue(orderId string) *FirestoreValue {
 		CreateTime: firestoreValueCreateTime,
 		Fields:     *order,
 		Name:       order.StoreRefPath(),
-		UpdateTime: firestoreValueUpdateTime,
+		UpdateTime: firestoreValueCreateTime,
 	}
 }
 
@@ -295,10 +291,9 @@ func storeMockOrder() string {
 // buildMockOrder returns a Order structure populated with a person that can be used to
 // test storing new shopping carts in our tests.
 func buildMockOrder() *schema.Order {
-	timestamp, _ := types.TimestampFromRFC3339Nano(timeString)
 	return &schema.Order{
 		Id:             uuid.NewString(),
-		SubmissionTime: timestamp.GetTime(),
+		SubmissionTime: orderSubmissionTime,
 		OrderedBy: &types.Person{
 			Id:          personId,
 			FamilyName:  personFamilyName,

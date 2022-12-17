@@ -77,6 +77,9 @@ significant locations:
 │                       shopping cart publications from the carttrigger function and records
 │                       new orders in the order data set.
 │ 
+├── ordertrigger    <-- Source code and Makefile for the order-trigger Firestore trigger Cloud
+│                       Function.
+│ 
 ├── pb              <-- Go library module generated from the gRPC service and protocol buffer
 │                       message schema. This is referenced by service modules to facilitate
 │                       implementation of the gRPC APIs. 

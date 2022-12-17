@@ -8,7 +8,7 @@ ENTRY_POINT := OrderFromCart
 RUNTIME := go119
 
 # Pub/Sub topic name to subscribe to
-SHOPPING_CART_TOPIC := shopping-cart
+SHOPPING_CART_TOPIC := ecomm-cart
 
 # Name/ID to give to Pub/Sub subscription
 SUBSCRIPTION_ID := ${FUNCTION_NAME}

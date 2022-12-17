@@ -16,10 +16,10 @@ SOURCE_CART_PROTO := ${CART_PROTO_ROOT}.proto
 MERGED_CART_PROTO := ${MERGED_PROTO_PATH}/${CART_PROTO_ROOT}.pps
 
 # Pub/Sub schema names
-SHOPPING_CART_SCHEMA := shopping-cart
+SHOPPING_CART_SCHEMA := ecomm-cart
 
 # Pub/Sub topic names
-SHOPPING_CART_TOPIC := shopping-cart
+SHOPPING_CART_TOPIC := ecomm-cart
 
 
 .DEFAULT_GOAL := help
@@ -54,4 +54,5 @@ teardown: ## Tear down the Google Cloud infrastructure
 
 ## Generate a single file protobuf schema for a shopping cart from the multi-file master definition
 ${MERGED_CART_PROTO}: ${PROTO_SOURCES}
+	-mkdir ${MERGED_PROTO_PATH}
 	cd ${SOURCE_PROTO_PATH}; protoc ${SOURCE_CART_PROTO} --pubsub-schema_out=${MERGED_PROTO_PATH} --pubsub-schema_opt=schema-syntax=proto3

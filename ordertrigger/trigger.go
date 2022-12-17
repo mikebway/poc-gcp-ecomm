@@ -77,7 +77,7 @@ func init() {
 
 	// Default the project ID and topic ID to be used for live Pub/Sub topic connections
 	TopicProjectId = "poc-gcp-ecomm"
-	TopicId = "order"
+	TopicId = "ecomm-order"
 
 	// Initialize our Zap logger
 	serviceLogger, _ := zap.NewProduction()

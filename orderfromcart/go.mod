@@ -7,6 +7,7 @@ require (
 	github.com/mikebway/poc-gcp-ecomm/cart v0.0.0-20221127215024-4a9112fd6e49
 	github.com/mikebway/poc-gcp-ecomm/order v0.0.0-20221123214304-54df30b09641
 	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20221127215024-4a9112fd6e49
+	github.com/mikebway/poc-gcp-ecomm/testutil v0.0.0-20221217173027-a3d94b3a7899
 	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20221127215024-4a9112fd6e49
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.23.0
