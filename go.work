@@ -5,6 +5,7 @@ use (
 	carttrigger
 	order
 	orderfromcart
+	ordertrigger
 	pb
 	testutil
     types

@@ -321,7 +321,7 @@ func (c *FirestoreCart) StoreRefPath() string {
 	return schema.CartCollection + c.Id.StringValue
 }
 
-// buildMockOpenCart returns a types.ShoppingCart structure populated with a shopper that can be used to
+// buildMockOpenCart returns a FirestoreCart structure populated with a shopper that can be used to
 // test storing new shopping carts in our tests.
 func buildMockOpenCart(cartId string) *FirestoreCart {
 	return &FirestoreCart{
