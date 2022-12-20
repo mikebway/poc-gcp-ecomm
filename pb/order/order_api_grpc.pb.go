@@ -38,7 +38,7 @@ func NewOrderAPIClient(cc grpc.ClientConnInterface) OrderAPIClient {
 
 func (c *orderAPIClient) GetOrderByID(ctx context.Context, in *GetOrderByIDRequest, opts ...grpc.CallOption) (*GetOrderByIDResponse, error) {
 	out := new(GetOrderByIDResponse)
-	err := c.cc.Invoke(ctx, "/cart.OrderAPI/GetOrderByID", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/mikebway.order.OrderAPI/GetOrderByID", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +47,7 @@ func (c *orderAPIClient) GetOrderByID(ctx context.Context, in *GetOrderByIDReque
 
 func (c *orderAPIClient) GetOrders(ctx context.Context, in *GetOrdersRequest, opts ...grpc.CallOption) (*GetOrdersResponse, error) {
 	out := new(GetOrdersResponse)
-	err := c.cc.Invoke(ctx, "/cart.OrderAPI/GetOrders", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/mikebway.order.OrderAPI/GetOrders", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func _OrderAPI_GetOrderByID_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cart.OrderAPI/GetOrderByID",
+		FullMethod: "/mikebway.order.OrderAPI/GetOrderByID",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OrderAPIServer).GetOrderByID(ctx, req.(*GetOrderByIDRequest))
@@ -116,7 +116,7 @@ func _OrderAPI_GetOrders_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cart.OrderAPI/GetOrders",
+		FullMethod: "/mikebway.order.OrderAPI/GetOrders",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(OrderAPIServer).GetOrders(ctx, req.(*GetOrdersRequest))
@@ -128,7 +128,7 @@ func _OrderAPI_GetOrders_Handler(srv interface{}, ctx context.Context, dec func(
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var OrderAPI_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "cart.OrderAPI",
+	ServiceName: "mikebway.order.OrderAPI",
 	HandlerType: (*OrderAPIServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

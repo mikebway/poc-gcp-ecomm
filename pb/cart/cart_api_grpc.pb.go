@@ -48,7 +48,7 @@ func NewCartAPIClient(cc grpc.ClientConnInterface) CartAPIClient {
 
 func (c *cartAPIClient) CreateShoppingCart(ctx context.Context, in *CreateShoppingCartRequest, opts ...grpc.CallOption) (*CreateShoppingCartResponse, error) {
 	out := new(CreateShoppingCartResponse)
-	err := c.cc.Invoke(ctx, "/cart.CartAPI/CreateShoppingCart", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/mikebway.cart.CartAPI/CreateShoppingCart", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (c *cartAPIClient) CreateShoppingCart(ctx context.Context, in *CreateShoppi
 
 func (c *cartAPIClient) GetShoppingCartByID(ctx context.Context, in *GetShoppingCartByIDRequest, opts ...grpc.CallOption) (*GetShoppingCartByIDResponse, error) {
 	out := new(GetShoppingCartByIDResponse)
-	err := c.cc.Invoke(ctx, "/cart.CartAPI/GetShoppingCartByID", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/mikebway.cart.CartAPI/GetShoppingCartByID", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (c *cartAPIClient) GetShoppingCartByID(ctx context.Context, in *GetShopping
 
 func (c *cartAPIClient) AddItemToShoppingCart(ctx context.Context, in *AddItemToShoppingCartRequest, opts ...grpc.CallOption) (*AddItemToShoppingCartResponse, error) {
 	out := new(AddItemToShoppingCartResponse)
-	err := c.cc.Invoke(ctx, "/cart.CartAPI/AddItemToShoppingCart", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/mikebway.cart.CartAPI/AddItemToShoppingCart", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (c *cartAPIClient) AddItemToShoppingCart(ctx context.Context, in *AddItemTo
 
 func (c *cartAPIClient) RemoveItemFromShoppingCart(ctx context.Context, in *RemoveItemFromShoppingCartRequest, opts ...grpc.CallOption) (*RemoveItemFromShoppingCartResponse, error) {
 	out := new(RemoveItemFromShoppingCartResponse)
-	err := c.cc.Invoke(ctx, "/cart.CartAPI/RemoveItemFromShoppingCart", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/mikebway.cart.CartAPI/RemoveItemFromShoppingCart", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func (c *cartAPIClient) RemoveItemFromShoppingCart(ctx context.Context, in *Remo
 
 func (c *cartAPIClient) SetDeliveryAddress(ctx context.Context, in *SetDeliveryAddressRequest, opts ...grpc.CallOption) (*SetDeliveryAddressResponse, error) {
 	out := new(SetDeliveryAddressResponse)
-	err := c.cc.Invoke(ctx, "/cart.CartAPI/SetDeliveryAddress", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/mikebway.cart.CartAPI/SetDeliveryAddress", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (c *cartAPIClient) SetDeliveryAddress(ctx context.Context, in *SetDeliveryA
 
 func (c *cartAPIClient) CheckoutShoppingCart(ctx context.Context, in *CheckoutShoppingCartRequest, opts ...grpc.CallOption) (*CheckoutShoppingCartResponse, error) {
 	out := new(CheckoutShoppingCartResponse)
-	err := c.cc.Invoke(ctx, "/cart.CartAPI/CheckoutShoppingCart", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/mikebway.cart.CartAPI/CheckoutShoppingCart", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -102,7 +102,7 @@ func (c *cartAPIClient) CheckoutShoppingCart(ctx context.Context, in *CheckoutSh
 
 func (c *cartAPIClient) AbandonShoppingCart(ctx context.Context, in *AbandonShoppingCartRequest, opts ...grpc.CallOption) (*AbandonShoppingCartResponse, error) {
 	out := new(AbandonShoppingCartResponse)
-	err := c.cc.Invoke(ctx, "/cart.CartAPI/AbandonShoppingCart", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/mikebway.cart.CartAPI/AbandonShoppingCart", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func _CartAPI_CreateShoppingCart_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cart.CartAPI/CreateShoppingCart",
+		FullMethod: "/mikebway.cart.CartAPI/CreateShoppingCart",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CartAPIServer).CreateShoppingCart(ctx, req.(*CreateShoppingCartRequest))
@@ -196,7 +196,7 @@ func _CartAPI_GetShoppingCartByID_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cart.CartAPI/GetShoppingCartByID",
+		FullMethod: "/mikebway.cart.CartAPI/GetShoppingCartByID",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CartAPIServer).GetShoppingCartByID(ctx, req.(*GetShoppingCartByIDRequest))
@@ -214,7 +214,7 @@ func _CartAPI_AddItemToShoppingCart_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cart.CartAPI/AddItemToShoppingCart",
+		FullMethod: "/mikebway.cart.CartAPI/AddItemToShoppingCart",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CartAPIServer).AddItemToShoppingCart(ctx, req.(*AddItemToShoppingCartRequest))
@@ -232,7 +232,7 @@ func _CartAPI_RemoveItemFromShoppingCart_Handler(srv interface{}, ctx context.Co
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cart.CartAPI/RemoveItemFromShoppingCart",
+		FullMethod: "/mikebway.cart.CartAPI/RemoveItemFromShoppingCart",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CartAPIServer).RemoveItemFromShoppingCart(ctx, req.(*RemoveItemFromShoppingCartRequest))
@@ -250,7 +250,7 @@ func _CartAPI_SetDeliveryAddress_Handler(srv interface{}, ctx context.Context, d
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cart.CartAPI/SetDeliveryAddress",
+		FullMethod: "/mikebway.cart.CartAPI/SetDeliveryAddress",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CartAPIServer).SetDeliveryAddress(ctx, req.(*SetDeliveryAddressRequest))
@@ -268,7 +268,7 @@ func _CartAPI_CheckoutShoppingCart_Handler(srv interface{}, ctx context.Context,
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cart.CartAPI/CheckoutShoppingCart",
+		FullMethod: "/mikebway.cart.CartAPI/CheckoutShoppingCart",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CartAPIServer).CheckoutShoppingCart(ctx, req.(*CheckoutShoppingCartRequest))
@@ -286,7 +286,7 @@ func _CartAPI_AbandonShoppingCart_Handler(srv interface{}, ctx context.Context, 
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/cart.CartAPI/AbandonShoppingCart",
+		FullMethod: "/mikebway.cart.CartAPI/AbandonShoppingCart",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(CartAPIServer).AbandonShoppingCart(ctx, req.(*AbandonShoppingCartRequest))
@@ -298,7 +298,7 @@ func _CartAPI_AbandonShoppingCart_Handler(srv interface{}, ctx context.Context, 
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var CartAPI_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "cart.CartAPI",
+	ServiceName: "mikebway.cart.CartAPI",
 	HandlerType: (*CartAPIServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

@@ -73,32 +73,32 @@ func (o *Order) StoreRefPath() string {
 // AsPBOrder returns the protocol buffer representation of this order.
 func (o *Order) AsPBOrder() *pborder.Order {
 
-	// Creation time should be set, but we will play it safe just the same
+	// Submission time should be set, but we will play it safe just the same
 	var pbSubmissionTime *timestamppb.Timestamp
 	if !o.SubmissionTime.IsZero() {
 		pbSubmissionTime = timestamppb.New(o.SubmissionTime)
 	}
 
-	// Only convert the shopper if they have been defined in the cart
+	// Only convert the person that put in the order  if they have been defined in the order.
 	// That should always be the case but we will play defensively.
 	var pbOrderedBy *pbtypes.Person
 	if o.OrderedBy != nil {
 		pbOrderedBy = o.OrderedBy.AsPBPerson()
 	}
 
-	// Only convert the delivery address if that has been defined in the cart
+	// Only convert the delivery address if that has been defined in the orded
 	var pbAddress *pbtypes.PostalAddress
 	if o.DeliveryAddress != nil {
 		pbAddress = o.DeliveryAddress.AsPBPostalAddress()
 	}
 
-	// Finally, add the cart items (if any)
+	// Finally, add the order items (if any)
 	pbItems := make([]*pborder.OrderItem, len(o.OrderItems))
 	for i, item := range o.OrderItems {
 		pbItems[i] = item.AsPBOrderItem()
 	}
 
-	// Return a populated protocol buffer version of the cart
+	// Return a populated protocol buffer version of the order
 	return &pborder.Order{
 		Id:              o.Id,
 		SubmissionTime:  pbSubmissionTime,

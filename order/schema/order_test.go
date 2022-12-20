@@ -11,7 +11,7 @@ const (
 	// A timestamp string we can use to derive known time values
 	timeString = "2022-10-29T16:23:19.123456789-06:00"
 
-	// A UUID string value that we can use as a shopping cart ID in our tests
+	// A UUID string value that we can use as an order ID in our tests
 	orderId = "d1cecab3-5bc0-43d4-aef1-99ad69794313"
 
 	// Define the person fields that we will use multiple times to define a person

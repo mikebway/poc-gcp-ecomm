@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package mikebway.fulfillment;
+
+import "google/type/timestamp.proto";
+
+option go_package = "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment";
+
+// Task defines a fulfilment activity that is being tracked by the Fulfillment Orchestration Service. Fulfillment tasks
+// map to order items in a many-to-one relationship, i.e. a single item in a customer order may map to multiple
+// fulfillment tasks.
+//
+// For example, an order might include two items such as a custom sofa and two end tables (one order line item with a
+// quantity of two). Fulfillment tasks for the sofa could include: order cover material, manufacture, ship, and install.
+message Task {
+
+  // A UUID ID in hexadecimal string form - a unique ID for this task.
+  // This will be set when the task is created in response to a new order being
+  // received by the fulfilment service.
+  string id = 1;
+
+  // submission_time is the time at which task was submitted to the Fulfillment Orchestration Service.
+  google.protobuf.Timestamp submission_time = 2;
+
+  // completion_time is the time at which task was marked as completed
+  google.protobuf.Timestamp completion_time = 3;
+
+  // order_id relates this task to the order containing the item that requires the task to be performed.
+  // order_id is a UUID ID in hexadecimal string form - a unique ID for the order.
+  string order_id = 4;
+
+  // order_item_id relates this task to the order item that requires the task to be performed.
+  // order_item_id is a UUID ID in hexadecimal string form - a unique ID for the order item.
+  string order_item_id = 5;
+
+  // product_code is the equivalent of a SKU code identifying the type of product or service that the OrderItemId
+  // is for.
+  string product_code = 6;
+
+  // task_code, in combination with the product_code, identifies the type of activity to be performed and the data,
+  // if any, to be collected.
+  string task_code = 7;
+
+  // Status identifies the status of the task, i.e. whether we are waiting for customer input, waiting for a
+  // response from a third party service, or that the task has bee completed or failed.
+  TaskStatus status = 8;
+
+  // reason_code provides a key that can be used to look up a localized explanation for why the status
+  // is WAITING_CUSTOMER, PAUSED, CANCELED, etc. Hopefully, people will choose reason codes that convey some meaning
+  // by themselves saving engineers with only the raw data from having to translate the value into something more
+  // intelligible.
+  //
+  // It is possible that the ReasonCode might need to be interpreted in context with the combination of the task_code
+  // and product_code.
+  string reason_code = 9;
+
+  // Parameters is a list of zero to many named value parameters that might be required to complete the task. For example,
+  // extending the custom sofa analogy, the parameters might define the model and cover fabric for the sofa.
+  repeated Parameter parameters = 10;
+}
+
+// An enumeration of the possible task states
+enum TaskStatus {
+  UNDEFINED = 0;            // Should not be seen - indicates that the status has not be set
+  WAITING_TASK = 1;         // Waiting on another task to complete.
+  WAITING_CUSTOMER = 2;     // Waiting for customer input.
+  WAITING_PAYMENT = 3;      // Waiting for a customer payment to be confirmed.
+  WAITING_CS = 4;           // Waiting on customer service.
+  WAITING_SERVICE = 5;      // Waiting on an internal customer service.
+  WAITING_THIRD_PARTY = 6;  // Waiting on a third party service.
+  PAUSED = 98;              // Paused; see reason_code.
+  CANCELED = 99;            // The task has been canceled; see reason_code.
+  COMPLETED = 100;          // The task has been completed
+}
+
+// A named parameter value
+message Parameter {
+
+  // The name of this parameter
+  string name = 1;
+
+  // The value of this parameter
+  oneof value {
+    // Represents a integer value.
+    int32 number = 2;
+
+    // Represents a string value.
+    string text = 3;
+
+    // Represents a boolean value.
+    bool true_false = 4;
+  }
+}

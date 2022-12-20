@@ -3,6 +3,7 @@ go 1.19
 use (
 	cart
 	carttrigger
+	fulfillment
 	order
 	orderfromcart
 	ordertrigger

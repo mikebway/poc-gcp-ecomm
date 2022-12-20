@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package cart;
+package mikebway.order;
 
 import "google/type/timestamp.proto";
 import "mikebway/order/order.proto";
@@ -17,21 +17,21 @@ service OrderAPI {
     rpc GetOrders(GetOrdersRequest) returns (GetOrdersResponse) {};
 }
 
-// Request parameters for the CreateShoppingCart API
+// Request parameters for the GetOrderByID API
 message GetOrderByIDRequest {
 
     // REQUIRED. The UUID ID of the order to be retrieved
     string order_id = 1;
 }
 
-// Response parameters for the CreateShoppingCart API
+// Response parameters for the GetOrderByID API
 message GetOrderByIDResponse {
 
     // The order requested
     mikebway.order.Order order = 1;
 }
 
-// Request parameters for the GetShoppingCartByID API
+// Request parameters for the GetOrders API
 //
 // See https://cloud.google.com/apis/design/design_patterns
 message GetOrdersRequest {
@@ -63,9 +63,7 @@ message GetOrdersRequest {
     string given_name = 6;
 }
 
-// Response parameters for the GetShoppingCartByID API.
-//
-// The cart field shall be missing / empty if no match was wound for the given ID.
+// Response parameters for the GetOrders API.
 message GetOrdersResponse {
 
     // OPTIONAL. May not be present if the result set was empty.

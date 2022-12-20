@@ -1,0 +1,104 @@
+syntax = "proto3";
+
+package mikebway.fulfillment;
+
+import "google/type/timestamp.proto";
+import "mikebway/fulfillment/task.proto";
+
+option go_package = "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment";
+
+// All of the API methods for the fulfillment service are declared here
+service FulfillmentAPI {
+
+    // Get a specified task
+    rpc GetTaskByID(GetTaskByIDRequest) returns (GetTaskByIDResponse) {};
+
+    // Get a list of Tasks matching some criteria
+    rpc GetTasks(GetTasksRequest) returns (GetTasksResponse) {};
+
+    // Update the status of a task
+    rpc UpdateTaskStatus(UpdateTaskStatusRequest)  returns (UpdateTaskStatusResponse) {};
+}
+
+// Request parameters for the GetTaskByID API
+message GetTaskByIDRequest {
+
+    // REQUIRED. The UUID ID of the task to be retrieved
+    string task_id = 1;
+}
+
+// Response parameters for the GetTaskByID API
+message GetTaskByIDResponse {
+
+    // The Task requested
+    mikebway.fulfillment.Task task = 1;
+}
+
+// Request parameters for the GetTasks API
+//
+// See https://cloud.google.com/apis/design/design_patterns
+message GetTasksRequest {
+
+    // REQUIRED. The earliest Task submission time for which Tasks are to be returned.
+    // Submission times may be equal to or greater than this.
+    google.protobuf.Timestamp start_time = 1;
+
+    // REQUIRED. The Task submission time after which Tasks are not to be returned
+    // Submission times must be less than this.
+    google.protobuf.Timestamp end_time = 2;
+
+    // REQUIRED. The maximum number of result to be returned in a single response.
+    //
+    // Must be between 1 and 100.
+    int32 page_size = 3;
+
+    // OPTIONAL. Required for second and subsequent requests, a marker token used to identify where the
+    // next page of results should begin within the overall result set.
+    //
+    // All other parameters should be the same as in previous requests otherwise the results shall
+    // be no deterministic.
+    string page_token = 4;
+
+    // OPTIONAL. The ID of the order which the tasks are associated with
+    string order_id = 5;
+
+    // OPTIONAL. The order item ID  which the tasks are associated with.
+    //
+    // NOTE: Specifying both an order_item_id and order_id is is pointless and will lead to an empty
+    // result set if the item was not part of the order in question.
+    string order_item_id = 6;
+}
+
+// Response parameters for the GetTasks API.
+message GetTasksResponse {
+
+    // OPTIONAL. May not be present if the result set was empty.
+    //
+    // The list of Tasks in the current page of results.
+    repeated mikebway.fulfillment.Task tasks = 1;
+
+    // OPTIONAL. May not be present if the result set was empty
+    //
+    // The token to be included to request the next page of results.
+    string next_page_token = 2;
+}
+
+// Request parameters for the UpdateTaskStatus API.
+message UpdateTaskStatusRequest {
+
+    // REQUIRED. The UUID ID of the task whose status is to be updated.
+    string task_id = 1;
+
+    // REQUIRED. The new status to be assigned to the task.
+    mikebway.fulfillment.TaskStatus status = 2;
+
+    // OPTIONAL. A code that gives an indication of the reason for the status change. This might typically be
+    // a message lookup key to a localized explanation for why the status has been changed. For example,
+    // "more_data_needed" or "charge_denied" might be reasons that the status were changed to WAITING_CUSTOMER.
+    string reason_code = 3;
+}
+
+// Response parameters for the UpdateTaskStatus API.
+message UpdateTaskStatusResponse {
+    // There is currently no return data defined for the response.
+}
