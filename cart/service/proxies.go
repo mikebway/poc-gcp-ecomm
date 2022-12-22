@@ -39,6 +39,7 @@ type QueryExecutionProxy interface {
 // See https://pkg.go.dev/cloud.google.com/go/firestore#DocumentRef
 type DocumentRefProxy interface {
 	Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
+	TransactionalCreate(doc *firestore.DocumentRef, tx *firestore.Transaction, data interface{}) error
 	Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error)
 	Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
 	Update(doc *firestore.DocumentRef, ctx context.Context, updates []firestore.Update) (*firestore.WriteResult, error)
@@ -126,21 +127,28 @@ type DocRefProxy struct {
 
 // Create is a direct pass through to the firestore.DocumentRef Create function. We use this rather than
 // calling the firestore.DocumentRef function directly so that we can replace this implementation with
-// one that allows errors to be inserted into the response when executing uni tests.
+// one that allows errors to be inserted into the response when executing unit tests.
 func (p *DocRefProxy) Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
 	return doc.Create(ctx, data)
 }
 
+// TransactionalCreate is a direct pass through to the firestore.Transaction Create function. We use this rather than
+// calling the firestore.Transaction function directly so that we can replace this implementation with
+// one that allows errors to be inserted into the response when executing unit tests.
+func (p *DocRefProxy) TransactionalCreate(doc *firestore.DocumentRef, tx *firestore.Transaction, data interface{}) error {
+	return tx.Create(doc, data)
+}
+
 // Get is a direct pass through to the firestore.DocumentRef Get function. We use this rather than
 // calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
-// allows errors to be inserted into the response when executing uni tests.
+// allows errors to be inserted into the response when executing unit tests.
 func (p *DocRefProxy) Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error) {
 	return doc.Get(ctx)
 }
 
 // Set is a direct pass through to the firestore.DocumentRef Set function. We use this rather than
 // calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
-// allows errors to be inserted into the response when executing uni tests.
+// allows errors to be inserted into the response when executing unit tests.
 func (p *DocRefProxy) Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
 	return doc.Set(ctx, data)
 }
@@ -151,7 +159,7 @@ func (p *DocRefProxy) Update(doc *firestore.DocumentRef, ctx context.Context, up
 
 // Delete is a direct pass through to the firestore.DocumentRef Delete function. We use this rather than
 // calling the firestore.DocumentRef function directly so that we can replace this implementation with one that
-// allows errors to be inserted into the response when executing uni tests.
+// allows errors to be inserted into the response when executing unit tests.
 func (p *DocRefProxy) Delete(doc *firestore.DocumentRef, ctx context.Context) (*firestore.WriteResult, error) {
 	return doc.Delete(ctx)
 }
@@ -164,7 +172,7 @@ type DocSnapProxy struct {
 
 // DataTo is a direct pass through to the firestore.DocumentSnapshot DataTo function. We use this rather than
 // calling the firestore.DocumentSnapshot function directly so that we can replace this implementation with
-// one that allows errors to be inserted into the response when executing uni tests.
+// one that allows errors to be inserted into the response when executing unit tests.
 func (p *DocSnapProxy) DataTo(snap *firestore.DocumentSnapshot, target interface{}) error {
 	return snap.DataTo(target)
 }

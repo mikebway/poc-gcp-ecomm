@@ -1,5 +1,5 @@
 // Package orderfromcart implements a Google Cloud Function to receive a shopping cart description via
-// a Cloud Task queue. The handler translates the cart into an order and stores it as an order document
+// a Pub/Sub topic. The handler translates the cart into an order and stores it as an order document
 // under Firestore.
 package orderfromcart
 

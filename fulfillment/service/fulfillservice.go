@@ -93,29 +93,55 @@ func NewFulfillmentService() (*FulfillmentService, error) {
 	return svc, nil
 }
 
-// SaveTask stores the given schema.Task in the Firestore document collection. This is for internal domain use only and
-// so does not accept or return protobuf structures.
+// SaveTasks stores the given slices of schema.Task structures in the Firestore document collection. This is for
+// internal domain use only and so does not accept or return protobuf structures.
 //
-// An error will be returned if the task is already present in Firestore.
-func (fs *FulfillmentService) SaveTask(ctx context.Context, task *schema.Task) error {
+// Note that the submission time for the task will be set / overriden by this method to match the time
+// it was written to Firestore.
+//
+// An error will be returned if the tasks are already present in Firestore.
+func (fs *FulfillmentService) SaveTasks(ctx context.Context, tasks []*schema.Task) error {
 
 	// Obtain a shortcut handle on our globally configured logger and log some context
 	l := zap.L()
-	l.Info("storing task", zap.String("taskId", task.Id), zap.String("orderId", task.OrderId),
-		zap.String("itemId", task.OrderItemId), zap.String("product", task.ProductCode), zap.String("task", task.TaskCode))
+	l.Info("opening task save transaction")
 
-	// Store the task in firestore
-	ref := fs.FsClient.Doc(task.StoreRefPath())
-	_, err := fs.drProxy.Create(ref, ctx, task)
+	// TODO: confirm that Create returns an error if the task already exists
+
+	// Open a transaction wrapping
+	err := fs.FsClient.RunTransaction(ctx, func(ctx context.Context, tx *firestore.Transaction) error {
+
+		// Loop through the tasks we have to save
+		for _, task := range tasks {
+
+			// Log the task information that we are going to try to store
+			l.Info("storing task", zap.String("taskId", task.Id), zap.String("orderId", task.OrderId),
+				zap.String("itemId", task.OrderItemId), zap.String("product", task.ProductCode), zap.String("task", task.TaskCode))
+
+			// Set the task submission time
+			task.SubmissionTime = time.Now()
+
+			// Store the task in Firestore
+			ref := fs.FsClient.Doc(task.StoreRefPath())
+			err := fs.drProxy.TransactionalCreate(ref, tx, task)
+			if err != nil {
+				err = fmt.Errorf("failed creating task document in Firestore: %w", err)
+				l.Error(err.Error(), zap.String("taskId", task.Id))
+				return err
+			}
+		}
+
+		// All is well if we get her
+		return nil
+	})
+
+	// How did that go?
 	if err != nil {
-		err = fmt.Errorf("failed creating task document in Firestore: %w", err)
-		l.Error(err.Error(), zap.String("taskId", task.Id))
-		return err
+		l.Error("task save transaction failed", zap.Error(err))
+	} else {
+		l.Info("completed task save transaction")
 	}
-
-	// All good, log our joy and return
-	l.Info("task stored successfully", zap.String("taskId", task.Id), zap.String("path", ref.Path))
-	return nil
+	return err
 }
 
 // UpdateTaskStatus allows the caller to modify just the status of the task and the associate reason code, i.e.

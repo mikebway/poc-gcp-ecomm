@@ -106,10 +106,16 @@ type UTDocRefProxy struct {
 	cartsvc.DocumentRefProxy
 }
 
-// Create is a pass through to the firestore.DocumentRef Create function  that allows
+// Create is a pass through to the firestore.DocumentRef Create function that allows
 // unit tests to have Firestore operations return errors.
 func (p *UTDocRefProxy) Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
 	return nil, errors.New(unitTestErrorMessage)
+}
+
+// TransactionalCreate is a pass through to the firestore.Transaction Create function that allows
+// unit tests to have Firestore operations return errors.
+func (p *UTDocRefProxy) TransactionalCreate(doc *firestore.DocumentRef, tx *firestore.Transaction, data interface{}) error {
+	return errors.New(unitTestErrorMessage)
 }
 
 // Update is a pass through to the firestore.DocumentRef Update function  that allows
@@ -161,7 +167,7 @@ func TestSaveTaskError(t *testing.T) {
 	}
 
 	// Attempt to save the task, certain this will fail
-	err := service.SaveTask(ctx, task)
+	err := service.SaveTasks(ctx, []*schema.Task{task})
 	assert.NotNil(err, "should have seen a forced error saving a task")
 	assert.Contains(err.Error(), unitTestErrorMessage, "did not see the specific error that we expected")
 }
@@ -476,7 +482,7 @@ func TestUpdateTaskStatus(t *testing.T) {
 	// First, create a task in Firestore that is well away from our other test targets and so won't
 	// brake any other test
 	targetTask := generateMockTask(1, 1, time.Now(), schema.WAITING_TASK)
-	err := service.SaveTask(ctx, targetTask)
+	err := service.SaveTasks(ctx, []*schema.Task{targetTask})
 	assert.Nil(err, "failed to save update target task")
 
 	// Check that the saved task has the expected status
@@ -578,10 +584,8 @@ func primeFirestore(ctx context.Context, assert *require.Assertions) {
 	deleteAllMockTasks(ctx, service, assert)
 
 	// Populate Firestore with our mock tasks for this run
-	for _, task := range mockTasks {
-		err := service.SaveTask(ctx, task)
-		assert.Nil(err, "did not expect an error storing a mock task: %v", err)
-	}
+	err = service.SaveTasks(ctx, mockTasks)
+	assert.Nil(err, "did not expect an error storing a mock tasks: %v", err)
 }
 
 // deleteAllMockTasks removes our mock tasks from the Firestore emulator. We use this to ensure that our tests are

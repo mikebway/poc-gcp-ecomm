@@ -6,6 +6,7 @@ use (
 	fulfillment
 	order
 	orderfromcart
+	ordertofulfill
 	ordertrigger
 	pb
 	testutil
