@@ -74,12 +74,51 @@ func TestAsPBTask(t *testing.T) {
 	req.Equal(int32(WAITING_SERVICE), int32(pbTask.Status), "expect task stays to match")
 	req.Equal(reasonCode1, pbTask.ReasonCode, "expect task reason codes to match")
 
-	// Confirm that one of the expected parameter count made it across
+	// Confirm that the expected parameter count made it across
 	req.Equal(2, len(pbTask.Parameters), "unexpected count of converted task parameters")
 	req.Equal(paramName1, pbTask.Parameters[0].Name, "parameter name 0 does not match")
 	req.Equal(valueString1, pbTask.Parameters[0].Value, "parameter value 0 does not match")
 	req.Equal(paramName2, pbTask.Parameters[1].Name, "parameter name 1 does not match")
 	req.Equal(valueString2, pbTask.Parameters[1].Value, "parameter value 1 does not match")
+}
+
+// TestAsPBTaskNoParameters exercises the ability to render our internal Task form, as written to Firestore, into
+// its protocol buffer form with the common situation of there being no parameters associated with the task.
+func TestAsPBTaskNoParameters(t *testing.T) {
+
+	// Build a task populated with all the bells and whistles, then remove the parameters
+	task := buildMockTask()
+	task.Parameters = nil
+
+	// Ask the task for its protocol buffer doppelganger
+	pbTask := task.AsPBTask()
+
+	// Check that everything came back as we expected in our freshly minted twin
+	req := require.New(t)
+	req.NotNil(pbTask, "should have received a result from Task.AsPBTask()")
+	req.Equal(taskId, pbTask.Id, "expect task IDs to match")
+	req.Equal(taskSubmissionTime, pbTask.SubmissionTime.AsTime(), "expect task submission times to match")
+	req.Equal(taskCompletionTime, pbTask.CompletionTime.AsTime(), "expect task completion times to match")
+	req.Equal(orderId, pbTask.OrderId, "expect task order IDs to match")
+	req.Equal(itemId, pbTask.OrderItemId, "expect order item IDs to match")
+	req.Equal(productCode, pbTask.ProductCode, "expect task IDs to match")
+	req.Equal(taskCode, pbTask.TaskCode, "expect task task codes to match")
+	req.Equal(int32(WAITING_SERVICE), int32(pbTask.Status), "expect task stays to match")
+	req.Equal(reasonCode1, pbTask.ReasonCode, "expect task reason codes to match")
+
+	// Confirm that three are no parameters in the result
+	req.Equal(0, len(pbTask.Parameters), "unexpected count of converted task parameters")
+}
+
+// TestStoreRefPath checks out how well Task.StoreRefPath does its job.
+func TestStoreRefPath(t *testing.T) {
+
+	// Create an buildMockTask that we can ask the store path of
+	task := buildMockTask()
+
+	// Get the Firestore path for the task and confirm that it is what we would expect
+	taskPath := task.StoreRefPath()
+	require.Equal(t, "tasks/"+task.Id, taskPath, "task store reference path incorrect")
 }
 
 // buildMockTask assembles a task structure with everything populated with known values.
