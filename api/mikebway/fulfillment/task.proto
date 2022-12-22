@@ -54,8 +54,7 @@ message Task {
   // and product_code.
   string reason_code = 9;
 
-  // Parameters is a list of zero to many named value parameters that might be required to complete the task. For example,
-  // extending the custom sofa analogy, the parameters might define the model and cover fabric for the sofa.
+  // Parameters is a list of zero to many named string parameters that might be required to complete the task.
   repeated Parameter parameters = 10;
 }
 
@@ -80,14 +79,5 @@ message Parameter {
   string name = 1;
 
   // The value of this parameter
-  oneof value {
-    // Represents a integer value.
-    int32 number = 2;
-
-    // Represents a string value.
-    string text = 3;
-
-    // Represents a boolean value.
-    bool true_false = 4;
-  }
+  string value = 2;
 }

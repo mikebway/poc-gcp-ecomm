@@ -67,6 +67,9 @@ message GetTasksRequest {
     // NOTE: Specifying both an order_item_id and order_id is is pointless and will lead to an empty
     // result set if the item was not part of the order in question.
     string order_item_id = 6;
+
+    // OPTIONAL. The product code which the tasks are associated with.
+    string product_code = 7;
 }
 
 // Response parameters for the GetTasks API.

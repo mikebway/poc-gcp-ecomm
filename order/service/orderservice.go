@@ -1,4 +1,4 @@
-// Package service contains the gRPC Shopping Cart microservice implementation.
+// Package service contains the gRPC Order microservice implementation.
 package service
 
 import (
@@ -53,7 +53,7 @@ func init() {
 }
 
 // OrderService is a structure class with methods that implements the order.OrderAPIServer gRPC API
-// storing the data for shopping carts in a Google Cloud Firestore document collection.
+// storing the data for orders in a Google Cloud Firestore document collection.
 type OrderService struct {
 	pborder.UnimplementedOrderAPIServer
 
@@ -115,7 +115,7 @@ func (os *OrderService) SaveOrder(ctx context.Context, order *schema.Order) erro
 	l := zap.L()
 	l.Info("storing order", zap.String("orderId", order.Id))
 
-	// Store the empty new cart in the firestore
+	// Store the order in firestore
 	ref := os.FsClient.Doc(order.StoreRefPath())
 	_, err := os.drProxy.Create(ref, ctx, order)
 	if err != nil {
@@ -124,7 +124,7 @@ func (os *OrderService) SaveOrder(ctx context.Context, order *schema.Order) erro
 		return err
 	}
 
-	// All good, log our joy and return the protocol buffer transliteration of our shiny new cart
+	// All good, log our joy and return
 	l.Info("order stored successfully", zap.String("orderId", order.Id), zap.String("path", ref.Path))
 	return nil
 }

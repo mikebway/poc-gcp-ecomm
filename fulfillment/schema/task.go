@@ -3,9 +3,7 @@
 package schema
 
 import (
-	"fmt"
 	pbfulfillment "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
-	"go.uber.org/zap"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"time"
 )
@@ -67,6 +65,11 @@ type Task struct {
 	Parameters []*Parameter `firestore:"parameters" json:"parameters"`
 }
 
+// StoreRefPath returns the string representation of the document reference path for this Task.
+func (t *Task) StoreRefPath() string {
+	return TaskCollection + "/" + t.Id
+}
+
 // TaskStatus is an integer enumeration of the possible task states
 type TaskStatus int32
 
@@ -102,56 +105,16 @@ const (
 	COMPLETED = 100
 )
 
-// Parameter represents a single named value of a single value type.
+// Parameter represents a single named string value. allowing the parameter to have different types
+// just proved two painful in the conversions between internal versions and, most especially, the Firestore
+// clients protocol buffer API over which we have no control.
 type Parameter struct {
 
 	// Name is the parameter name
 	Name string `firestore:"name" json:"name"`
 
-	// value is one of a limited number of value type
-	Value ParameterValue `firestore:"value" json:"value"`
-}
-
-// ParameterValue defines an interface to be implemented by type specific structures that will
-// hold the actual parameter value.
-type ParameterValue interface {
-	AsParameterValue() string
-}
-
-// NumberValue stores an integer parameter value.
-type NumberValue struct {
-	ParameterValue
-
-	Number int32 `firestore:"number" json:"number"`
-}
-
-// AsParameterValue confirms by its existence that NumberValue is a ParameterValue implementation type.
-func (nv *NumberValue) AsParameterValue() string {
-	return fmt.Sprintf("%d", nv.Number)
-}
-
-// TextValue stores a string parameter value.
-type TextValue struct {
-	ParameterValue
-
-	Text string `firestore:"text" json:"text"`
-}
-
-// AsParameterValue confirms by its existence that TextValue is a ParameterValue implementation type.
-func (tv *TextValue) AsParameterValue() string {
-	return tv.Text
-}
-
-// BooleanValue stores an bool parameter value.
-type BooleanValue struct {
-	ParameterValue
-
-	Boolean bool `firestore:"boolean" json:"boolean"`
-}
-
-// AsParameterValue confirms by its existence that BooleanValue is a ParameterValue implementation type.
-func (bv *BooleanValue) AsParameterValue() string {
-	return fmt.Sprintf("%t", bv.Boolean)
+	// Value is one of a limited number of value type
+	Value string `firestore:"value" json:"value"`
 }
 
 // AsPBTask returns the protocol buffer representation of this task.
@@ -187,36 +150,19 @@ func (t *Task) AsPBTask() *pbfulfillment.Task {
 // asPBParameters converts our internal parameter set representation to the protocol buffer equivalent.
 func (t *Task) asPBParameters() []*pbfulfillment.Parameter {
 
+	// If we have no parameters, return nil for lowest cost
+	if len(t.Parameters) == 0 {
+		return nil
+	}
+
 	// Build our response here
-	var pbParams []*pbfulfillment.Parameter
+	pbParams := make([]*pbfulfillment.Parameter, len(t.Parameters))
 
 	// Loop through all our internal parameters adding them to the result
-	for _, param := range t.Parameters {
+	for i, param := range t.Parameters {
 
-		// Build our next protocol buffer parameter here
-		pbParam := &pbfulfillment.Parameter{Name: param.Name}
-
-		// What we add to the target slice depends on the type of what we have in our own
-		switch value := param.Value.(type) {
-		case *NumberValue:
-			pbParam.Value = &pbfulfillment.Parameter_Number{Number: value.Number}
-
-		case *TextValue:
-			pbParam.Value = &pbfulfillment.Parameter_Text{Text: value.Text}
-
-		case *BooleanValue:
-			pbParam.Value = &pbfulfillment.Parameter_TrueFalse{TrueFalse: value.Boolean}
-
-		default:
-			// We don't recognise the type of value that we have. That's bad but rather than block
-			// a task from being processed altogether we will just log an error an ignore this one.
-			// In theory, this never happens, in theory.
-			zap.L().Error("ignoring unrecognized parameter type in task", zap.String("id", t.Id), zap.String("taskCode", t.TaskCode))
-			continue
-		}
-
-		// Add the protocol buffer parameter to the protocol buffer slice that we will return
-		pbParams = append(pbParams, pbParam)
+		// Set the protocol buffer version of the parameter into the protocol buffer slice that we will return
+		pbParams[i] = &pbfulfillment.Parameter{Name: param.Name, Value: param.Value}
 	}
 
 	// Return what we built, perhaps noting at all

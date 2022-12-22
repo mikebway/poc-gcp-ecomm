@@ -41,6 +41,7 @@ type DocumentRefProxy interface {
 	Create(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
 	Get(doc *firestore.DocumentRef, ctx context.Context) (*firestore.DocumentSnapshot, error)
 	Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error)
+	Update(doc *firestore.DocumentRef, ctx context.Context, updates []firestore.Update) (*firestore.WriteResult, error)
 	Delete(doc *firestore.DocumentRef, ctx context.Context) (*firestore.WriteResult, error)
 }
 
@@ -142,6 +143,10 @@ func (p *DocRefProxy) Get(doc *firestore.DocumentRef, ctx context.Context) (*fir
 // allows errors to be inserted into the response when executing uni tests.
 func (p *DocRefProxy) Set(doc *firestore.DocumentRef, ctx context.Context, data interface{}) (*firestore.WriteResult, error) {
 	return doc.Set(ctx, data)
+}
+
+func (p *DocRefProxy) Update(doc *firestore.DocumentRef, ctx context.Context, updates []firestore.Update) (*firestore.WriteResult, error) {
+	return doc.Update(ctx, updates)
 }
 
 // Delete is a direct pass through to the firestore.DocumentRef Delete function. We use this rather than

@@ -65,7 +65,7 @@ type OrderItem struct {
 	UnitPrice *types.Money `firestore:"unitPrice" json:"unitPrice"`
 }
 
-// StoreRefPath returns the string representation of the document reference path for this ShoppingCart.
+// StoreRefPath returns the string representation of the document reference path for this Order.
 func (o *Order) StoreRefPath() string {
 	return OrderCollection + "/" + o.Id
 }

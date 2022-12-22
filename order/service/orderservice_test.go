@@ -221,8 +221,8 @@ func TestGetOrderByIDNotFound(t *testing.T) {
 	assert.Nil(response, "should not have received a response")
 }
 
-// TestGetOrderByIDNotCorrupt tries to retrieve a document that cannot be unmarshalled from its snapshot
-func TestGetOrderByIDNotCorrupt(t *testing.T) {
+// TestGetOrderByIDCorrupt tries to retrieve a document that cannot be unmarshalled from its snapshot
+func TestGetOrderByIDCorrupt(t *testing.T) {
 
 	// Do the common setup that most of our tests require
 	assert, ctx, service := commonTestSetup(t)
@@ -389,8 +389,7 @@ func TestQueryError(t *testing.T) {
 	// Replace the query proxy of the service with one that will behave badly at our direction
 	service.queryProxy = &UTQueryExecProxy{}
 
-	// Request what we know should be the first 5 of 8 orders starting with the second one and excluding the last
-	// of our mock set
+	// Request what we know would normally return the two orders with the same family name
 	request := &pborder.GetOrdersRequest{
 		FamilyName: "RepeatedName",
 		PageSize:   5,
@@ -421,7 +420,7 @@ func TestSillyPageSizes(t *testing.T) {
 		response, err = service.GetOrders(ctx, request)
 	})
 
-	// The first page returned should be index entries 1 through 5 of the complete 0 to 9 set
+	// The first page returned should be index entries 1 through 10 of the complete 0 to 9 set
 	assert.Nil(err, "did not expect an error calling GetOrders with a large page size (1 of 3)", err)
 	assert.Equal(10, len(response.Orders), "expect all 10 orders to be returned (1 of 3)")
 	assert.Contains(logged, "excessive page size adjusted to maximum", "did not see logging to say that page size had been reduced")
@@ -432,8 +431,8 @@ func TestSillyPageSizes(t *testing.T) {
 		response, err = service.GetOrders(ctx, request)
 	})
 
-	// The first page returned should be index entries 1 through 5 of the complete 0 to 9 set
-	assert.Nil(err, "did not expect an error calling GetOrders with a large page size (2 of 3)", err)
+	// The first page returned should be index entries 1 through 10 of the complete 0 to 9 set
+	assert.Nil(err, "did not expect an error calling GetOrders with a zero page size (2 of 3)", err)
 	assert.Equal(10, len(response.Orders), "expect all 10 orders to be returned (2 of 3)")
 	assert.Contains(logged, "negative/zero page size adjusted to default", "did not see logging to say that page size had been increased (from zero)")
 
@@ -443,8 +442,8 @@ func TestSillyPageSizes(t *testing.T) {
 		response, err = service.GetOrders(ctx, request)
 	})
 
-	// The first page returned should be index entries 1 through 5 of the complete 0 to 9 set
-	assert.Nil(err, "did not expect an error calling GetOrders with a large page size (3 of 3)", err)
+	// The first page returned should be index entries 1 through 10 of the complete 0 to 9 set
+	assert.Nil(err, "did not expect an error calling GetOrders with a negative page size (3 of 3)", err)
 	assert.Equal(10, len(response.Orders), "expect all 10 orders to be returned (3 of 3)")
 	assert.Contains(logged, "negative/zero page size adjusted to default", "did not see logging to say that page size had been increased (from negative)")
 }

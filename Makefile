@@ -25,6 +25,7 @@ test: protobuf ## Compile code and run unit tests locally on all components that
 	$(info running test)
 	$(MAKE) -C cart test
 	$(MAKE) -C carttrigger test
+	$(MAKE) -C fulfillment test
 	$(MAKE) -C order test
 	$(MAKE) -C ordertrigger test
 	$(MAKE) -C orderfromcart test
@@ -35,6 +36,7 @@ build: protobuf ## Build all the project components (invoking gcloud build)
 	$(info running build)
 	$(MAKE) -C cart build
 	$(MAKE) -C carttrigger build
+	$(MAKE) -C fulfillment build
 	$(MAKE) -C order build
 	$(MAKE) -C ordertrigger build
 	$(MAKE) -C orderfromcart build
@@ -44,6 +46,7 @@ deploy: ## Deploy all project components to Google Cloud (you MUST build first)
 	$(info running deploy)
 	$(MAKE) -C cart deploy
 	$(MAKE) -C carttrigger deploy
+	$(MAKE) -C fulfillment test
 	$(MAKE) -C order deploy
 	$(MAKE) -C ordertrigger deploy
 	$(MAKE) -C orderfromcart deploy
