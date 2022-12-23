@@ -31,12 +31,16 @@ to successfully build and deploy services to the Google Cloud Platform can be fo
 pages:
 
 #### The Scenario
+![POC Component Relationships](docs/poc-gcp-ecomm-scenario.png)
 * [Overview](docs/SCENARIO.md)
 * [Infrastructure Setup](infrastructure/README.md)
 * [The gRPC Cart Microservice](cart/README.md)
+* [The gRPC Order Microservice](order/README.md)
+* [The gRPC Fulfillment Orchestration Microservice](fulfillment/README.md)
 * [The Cart Firestore Trigger Function](carttrigger/README.md)
 * [The Order from Cart Topic Consumer](orderfromcart/README.md)
-* [The gRPC Order Microservice](order/README.md)
+* [The Order Firestore Trigger Function](ordertrigger/README.md)
+* [The Order To Fulfillment Topic Consumer](ordertofulfill/README.md)
 
 #### How To ...
 * [Use BloomRPC to invoke gRPC Cloud Run services](docs/BLOOMRPC.md)
@@ -57,7 +61,7 @@ significant locations:
 │   │                   numbers etc.
 │   │
 │   │                   Note: cloning to support local code generation is considered good
-│   │                   practice. numbers etc.
+│   │                   practice.
 │   │
 │   └── mikebway    <-- gRPC service and protocol buffer schema definitions specific to this
 │                       project. 
@@ -69,13 +73,19 @@ significant locations:
 │ 
 ├── docs            <-- Additional README documentation, not specific to any service or module.
 │ 
+├── fulfillment     <-- Source code and Makefile for the fulfilment-service Cloud Run container. 
+│ 
 ├── infrastructure  <-- Contains a Makefile that can setup or teardown Pub/Sub topics etc. 
 │ 
 ├── order           <-- Source code and Makefile for the order-service Cloud Run container. 
 │ 
-├── orderfromcart   <-- Source code for a Pub/Sub subscriber Cloud Function that consumers 
+├── orderfromcart   <-- Source code for a Pub/Sub subscriber Cloud Function that consumes 
 │                       shopping cart publications from the carttrigger function and records
 │                       new orders in the order data set.
+│ 
+├── ordertofulfill  <-- Source code for a Pub/Sub subscriber Cloud Function that consumes 
+│                       order publications from the ordertrigger function and records
+│                       order item fulfillment tasks in the task data set.
 │ 
 ├── ordertrigger    <-- Source code and Makefile for the order-trigger Firestore trigger Cloud
 │                       Function.

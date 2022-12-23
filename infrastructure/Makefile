@@ -20,6 +20,8 @@ SHOPPING_CART_SCHEMA := ecomm-cart
 
 # Pub/Sub topic names
 SHOPPING_CART_TOPIC := ecomm-cart
+ORDER_TOPIC := ecomm-order
+FULFILLMENT_TASK_TOPIC := ecomm-task
 
 
 .DEFAULT_GOAL := help
@@ -45,11 +47,19 @@ setup: ${MERGED_CART_PROTO} ## Setup the Google Cloud infrastructure
 	# Declare the Pub/Sub topic that moves shopping carts to the Order system
 	-gcloud pubsub topics create ${SHOPPING_CART_TOPIC} --quiet --schema ${SHOPPING_CART_SCHEMA} --message-retention-duration=7d --message-encoding=binary
 
+	# Declare the Pub/Sub topic that moves orders to the Fulfillment system
+	-gcloud pubsub topics create ${ORDER_TOPIC} --quiet --message-retention-duration=7d --message-encoding=binary
+
+	# Declare the Pub/Sub topic that submits fulfillment tasks to the task-distributor Cloud Function
+	-gcloud pubsub topics create ${FULFILLMENT_TASK_TOPIC} --quiet --message-retention-duration=7d --message-encoding=binary
+
 
 .PHONY: teardown
 teardown: ## Tear down the Google Cloud infrastructure
 	-gcloud pubsub topics delete ${SHOPPING_CART_TOPIC} --quiet
 	-gcloud pubsub schemas delete ${SHOPPING_CART_SCHEMA} --quiet
+	-gcloud pubsub topics delete ${ORDER_TOPIC} --quiet
+	-gcloud pubsub topics delete ${FULFILLMENT_TASK_TOPIC} --quiet
 	#-gcloud artifacts repositories create gcr-artifacts
 
 ## Generate a single file protobuf schema for a shopping cart from the multi-file master definition
