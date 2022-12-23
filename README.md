@@ -41,6 +41,7 @@ pages:
 * [The Order from Cart Topic Consumer](orderfromcart/README.md)
 * [The Order Firestore Trigger Function](ordertrigger/README.md)
 * [The Order To Fulfillment Topic Consumer](ordertofulfill/README.md)
+* [The Fulfillment Task Firestore Trigger Function](tasktrigger/README.md)
 
 #### How To ...
 * [Use BloomRPC to invoke gRPC Cloud Run services](docs/BLOOMRPC.md)
@@ -93,6 +94,9 @@ significant locations:
 ├── pb              <-- Go library module generated from the gRPC service and protocol buffer
 │                       message schema. This is referenced by service modules to facilitate
 │                       implementation of the gRPC APIs. 
+│ 
+├── tasktrigger     <-- Source code and Makefile for the task-trigger Firestore trigger Cloud
+│                       Function.
 │ 
 ├── testutil        <-- Go library module intended solely to support unit testing of other  
 │                       modules.

@@ -60,7 +60,7 @@ teardown: ## Tear down the Google Cloud infrastructure
 	-gcloud pubsub schemas delete ${SHOPPING_CART_SCHEMA} --quiet
 	-gcloud pubsub topics delete ${ORDER_TOPIC} --quiet
 	-gcloud pubsub topics delete ${FULFILLMENT_TASK_TOPIC} --quiet
-	#-gcloud artifacts repositories create gcr-artifacts
+	#-gcloud artifacts repositories delete gcr-artifacts
 
 ## Generate a single file protobuf schema for a shopping cart from the multi-file master definition
 ${MERGED_CART_PROTO}: ${PROTO_SOURCES}

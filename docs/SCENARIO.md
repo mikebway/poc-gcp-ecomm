@@ -42,9 +42,14 @@ The order Pub/Sub topic is configured to push order messages to the [Order To Fu
 Cloud Function. This function examines the order and generates zero to many fulfillment tasks for each order item,
 writing task description documents to a Firestore "tasks" document collection.
 
-Following the now predictable pattern, a [Task Firestore Trigger](../tasktrigger/README.md) is invoked for each of
-the tasks written to Firestore. This reads the tasks from Firestore and publishes them to an "ecomm-task" Pub/Sub topic.
+Following the now predictable pattern, a [Fulfillment Task Firestore Trigger](../tasktrigger/README.md) is invoked for
+each of the tasks written to Firestore. This reads the tasks from Firestore and publishes them to an "ecomm-task" 
+Pub/Sub topic.
 
-Receiving pushes from this task topic is a [Task Distributor](..taskdistrib/README.md) Cloud Function. This function 
+Receiving pushes from this task topic is a [Task Distributor](../taskdistrib/README.md) Cloud Function. This function 
 knows nothing about how to execute the task but is configured with a map that informs it of additional Cloud Functions
 that it can synchronously invoke to handle task initiation (e.g. send an email etc).
+
+The [Fulfillment Orchestration gRPC API](../fulfillment/README.md) allows users to review the status of fulfillment
+tasks while web hooks and Pub/Sub topic subscribers use other APIs on this service to record task status updates as they
+are reported by other services, customer support, etc.

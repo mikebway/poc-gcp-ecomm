@@ -1,5 +1,5 @@
-// Package ordertrigger handles Firestore trigger invocations when order documents are updated.
-package ordertrigger
+// Package tasktrigger handles Firestore trigger invocations when order documents are updated.
+package tasktrigger
 
 import (
 	"context"
@@ -8,8 +8,8 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/golang/protobuf/proto"
-	"github.com/mikebway/poc-gcp-ecomm/order/service"
-	pborder "github.com/mikebway/poc-gcp-ecomm/pb/order"
+	"github.com/mikebway/poc-gcp-ecomm/fulfillment/service"
+	pbfulfillment "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
 	"go.uber.org/zap"
 )
 
@@ -21,9 +21,9 @@ var (
 	// TopicId a variable so that unit tests can override it to force errors to occur
 	TopicId string
 
-	// orderClient is lazy-loaded and allows us to retrieve complete orders from Firestore. Unit tests
+	// fulfillClient is lazy-loaded and allows us to retrieve tasks from Firestore. Unit tests
 	// can substitute an alternative instance here to force errors.
-	orderClient OrderServiceClient
+	fulfillClient FulfillmentServiceClient
 
 	// pubSubClient is an instance of a wrapper interface for our Pub/Sub client that allows us to inject errors
 	// when unit testing
@@ -41,16 +41,16 @@ type FirestoreEvent struct {
 
 // FirestoreValue holds Firestore document fields.
 type FirestoreValue struct {
-	CreateTime time.Time      `json:"createTime"`
-	Fields     FirestoreOrder `json:"fields"`
-	Name       string         `json:"name"`
-	UpdateTime time.Time      `json:"updateTime"`
+	CreateTime time.Time     `json:"createTime"`
+	Fields     FirestoreTask `json:"fields"`
+	Name       string        `json:"name"`
+	UpdateTime time.Time     `json:"updateTime"`
 }
 
-// FirestoreOrder describes the document fields that we need to know about as they will
+// FirestoreTask describes the document fields that we need to know about as they will
 // be found in the event data (not as we would prefer them, in the structure that we
 // submitted to the Firestore API to populate the document in the first place :-(
-type FirestoreOrder struct {
+type FirestoreTask struct {
 	Id     StringValue  `json:"id"`
 	Status IntegerValue `json:"status"`
 }
@@ -61,16 +61,16 @@ type IntegerValue struct {
 	IntegerValue string `json:"integerValue"`
 }
 
-// OrderServiceClient is a wrapper for the order service that supports lazy loading of the service and unit test
-// error generation.
-type OrderServiceClient interface {
-	GetOrder(ctx context.Context, orderId string) (*pborder.Order, error)
+// FulfillmentServiceClient is a wrapper for the fulfillment service that supports lazy loading of the service
+// and unit test error generation.
+type FulfillmentServiceClient interface {
+	GetTask(ctx context.Context, taskId string) (*pbfulfillment.Task, error)
 }
 
 // PubSubClient is a wrapper for our Google client that supports lazy loading of the client and unit test
 // error generation.
 type PubSubClient interface {
-	Publish(ctx context.Context, order *pborder.Order) error
+	Publish(ctx context.Context, order *pbfulfillment.Task) error
 }
 
 // init is the static initializer used to configure our local and global static variables.
@@ -78,19 +78,19 @@ func init() {
 
 	// Default the project ID and topic ID to be used for live Pub/Sub topic connections
 	TopicProjectId = "poc-gcp-ecomm"
-	TopicId = "ecomm-order"
+	TopicId = "ecomm-task"
 
 	// Initialize our Zap logger
 	serviceLogger, _ := zap.NewProduction()
 	zap.ReplaceGlobals(serviceLogger)
 
 	// Instantiate our two clients
-	orderClient = &OrderServiceClientImpl{}
+	fulfillClient = &FulfillmentServiceClientImpl{}
 	pubSubClient = &PubSubClientImpl{}
 }
 
 // UpdateTrigger receives a document update Firestore trigger event. The function is deployed with a trigger
-// configuration (see Makefile) that will notify the handler of all updates to the root document of an Order.
+// configuration (see Makefile) that will notify the handler of all updates to the root document of a Task.
 func UpdateTrigger(ctx context.Context, e FirestoreEvent) error {
 
 	// Have our big brother sibling do all the real work while we just handle the trigger interfacing and
@@ -118,44 +118,44 @@ func doUpdateTrigger(ctx context.Context, e FirestoreEvent) error {
 	//       compatible with or easily convertible to their database API models. There is no easy
 	//       way to populate an Order structure from the FirestoreEvent/FirestoreValue structures!
 
-	// There should be a way to unmarshall this FirestoreEvent data to an Order structures but there
+	// There should be a way to unmarshall this FirestoreEvent data to a Task structures but there
 	// is not. Fortunately, we need little information from the new FirestoreValue structure to determine
 	// how we should respond.
 
-	// Pick up the ID of the order in question
+	// Pick up the ID of the task in question
 	newFields := e.Value.Fields
-	orderId := newFields.Id.StringValue
+	taskId := newFields.Id.StringValue
 
-	// At this point we know that we have a order that needs to be published
-	logger.Info("processing order", zap.String("orderId", orderId))
+	// At this point we know that we have a task that needs to be published
+	logger.Info("processing task", zap.String("taskId", taskId))
 
-	// Retrieve the full order from Firestore
-	order, err := orderClient.GetOrder(ctx, orderId)
+	// Retrieve the full task from Firestore
+	order, err := fulfillClient.GetTask(ctx, taskId)
 	if err != nil {
-		return fmt.Errorf("unable to retrieve order from firestore: %s - %w", orderId, err)
+		return fmt.Errorf("unable to retrieve task from firestore: %s - %w", taskId, err)
 	}
 
-	// Publish the order to our target topic
+	// Publish the task to our target topic
 	err = pubSubClient.Publish(ctx, order)
 	if err != nil {
-		return fmt.Errorf("pubsub publish failed: %s - %w", orderId, err)
+		return fmt.Errorf("pubsub publish failed: %s - %w", taskId, err)
 	}
 
 	// ... and that is all she wrote!
-	logger.Info("published order", zap.String("orderId", orderId))
+	logger.Info("published task", zap.String("taskId", taskId))
 	return nil
 }
 
-// OrderServiceClientImpl is the default implementation of the OrderServiceClient interface.
+// FulfillmentServiceClientImpl is the default implementation of the FulfillmentServiceClient interface.
 // error generation.
-type OrderServiceClientImpl struct {
-	OrderServiceClient
+type FulfillmentServiceClientImpl struct {
+	FulfillmentServiceClient
 
-	orderService *service.OrderService
+	fulfillmentService *service.FulfillmentService
 }
 
-// GetOrder loads a fully populated order from Firestore.
-func (c *OrderServiceClientImpl) GetOrder(ctx context.Context, orderId string) (*pborder.Order, error) {
+// GetTask loads a fully populated task from Firestore.
+func (c *FulfillmentServiceClientImpl) GetTask(ctx context.Context, taskId string) (*pbfulfillment.Task, error) {
 
 	// Lazy-load the underlying Pub/Sub client that we wrap
 	err := c.lazyLoad()
@@ -164,26 +164,26 @@ func (c *OrderServiceClientImpl) GetOrder(ctx context.Context, orderId string) (
 	}
 
 	// Attempt to fetch the requested order
-	svcResponse, err := c.orderService.GetOrderByID(ctx, &pborder.GetOrderByIDRequest{OrderId: orderId})
+	svcResponse, err := c.fulfillmentService.GetTaskByID(ctx, &pbfulfillment.GetTaskByIDRequest{TaskId: taskId})
 	if err != nil {
 		return nil, err
 	}
 
 	// It's all good - return the order
-	return svcResponse.Order, nil
+	return svcResponse.Task, nil
 }
 
 // getClient lazy-loads our underlying service.OrderService.
-func (c *OrderServiceClientImpl) lazyLoad() error {
+func (c *FulfillmentServiceClientImpl) lazyLoad() error {
 
 	// In the normal case, we return quickly because the service has been cached before
-	if c.orderService != nil {
+	if c.fulfillmentService != nil {
 		return nil
 	}
 
 	// Establish our order service
 	var err error
-	c.orderService, err = service.NewOrderService()
+	c.fulfillmentService, err = service.NewFulfillmentService()
 
 	// Happy or not, we are done
 	return err
@@ -197,7 +197,7 @@ type PubSubClientImpl struct {
 }
 
 // Publish submits a binary message to our configured Pub/Sub topic.
-func (c *PubSubClientImpl) Publish(ctx context.Context, order *pborder.Order) error {
+func (c *PubSubClientImpl) Publish(ctx context.Context, task *pbfulfillment.Task) error {
 
 	// Lazy-load the underlying Pub/Sub client that we wrap
 	err := c.lazyLoad(ctx)
@@ -206,9 +206,9 @@ func (c *PubSubClientImpl) Publish(ctx context.Context, order *pborder.Order) er
 	}
 
 	// Marshal the protobuf-ready order structure we just retrieved into base64 encoded binary
-	data, err := proto.Marshal(order)
+	data, err := proto.Marshal(task)
 	if err != nil {
-		return fmt.Errorf("unable to marshal order into protobuf binary: %w", err)
+		return fmt.Errorf("unable to marshal task into protobuf binary: %w", err)
 	}
 
 	// Publish the data to our target topic

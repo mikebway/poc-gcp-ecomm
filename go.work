@@ -9,6 +9,7 @@ use (
 	ordertofulfill
 	ordertrigger
 	pb
+	tasktrigger
 	testutil
     types
 )
