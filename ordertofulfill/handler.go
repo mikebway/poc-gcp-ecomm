@@ -27,7 +27,7 @@ var (
 	// first instantiated. We will cheat and hard code the map in the init() function.
 	productTasks map[string][]*schema.Task
 
-	// fService is lazy loaded fulfillment service implementation that we use to save tasks to Firestore
+	// lazyFulfillmentService is the lazy-loaded fulfillment service implementation that we use to save tasks to Firestore
 	lazyFulfillmentService *service.FulfillmentService
 )
 
@@ -79,8 +79,8 @@ func OrderToFulfill(w http.ResponseWriter, r *http.Request) {
 // See https://cloud.google.com/pubsub/docs/push for documentation of the reader JSON content.
 func doOrderToFulfill(ctx context.Context, reader io.Reader) (int, error) {
 
-	// Lazy load the fulfillment service that we wil use to write task to Firestore
-	fService, err := getFulfillemntService()
+	// Lazy load the fulfillment service that we wil use to write tasks to Firestore
+	svc, err := getFulfillemntService()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -107,7 +107,7 @@ func doOrderToFulfill(ctx context.Context, reader io.Reader) (int, error) {
 	tasks := convertOrderToTasks(order)
 
 	// Save all the tasks in a single transaction - all or nothing service.
-	err = fService.SaveTasks(ctx, tasks)
+	err = svc.SaveTasks(ctx, tasks)
 	if err != nil {
 		zap.L().Error("failed to save tasks for order", zap.String("orderId", order.Id), zap.Error(err))
 		return http.StatusInternalServerError, err

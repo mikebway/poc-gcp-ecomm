@@ -2,20 +2,21 @@
 package service
 
 import (
-	"cloud.google.com/go/firestore"
 	"context"
 	"crypto/sha1"
 	"encoding/base64"
 	"fmt"
+	"hash"
+	"strconv"
+	"strings"
+	"time"
+
+	"cloud.google.com/go/firestore"
 	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/service"
 	"github.com/mikebway/poc-gcp-ecomm/order/schema"
 	pborder "github.com/mikebway/poc-gcp-ecomm/pb/order"
 	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
-	"hash"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (
@@ -110,6 +111,8 @@ func NewOrderService() (*OrderService, error) {
 //
 // An error will be returned if the order is already present in Firestore. Orders are immutable!
 func (os *OrderService) SaveOrder(ctx context.Context, order *schema.Order) error {
+
+	// TODO: confirm that Create fails if the order ID already exists in Firestore
 
 	// Obtain a shortcut handle on our globally configured logger and log some context
 	l := zap.L()

@@ -4,19 +4,27 @@
 package orderfromcart
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/golang/protobuf/proto"
 	orders "github.com/mikebway/poc-gcp-ecomm/order/schema"
+	"github.com/mikebway/poc-gcp-ecomm/order/service"
 	pb "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	_ "github.com/mikebway/poc-gcp-ecomm/types"
 	"go.uber.org/zap"
 	"google.golang.org/api/pubsub/v1"
-	"io"
-	"net/http"
+)
+
+var (
+	// lazyOrderService is the lazy-loaded order service implementation that we use to save orders to Firestore
+	lazyOrderService *service.OrderService
 )
 
 // init is the static initializer used to configure our local and global static variables.
@@ -39,57 +47,83 @@ type pushRequest struct {
 func OrderFromCart(w http.ResponseWriter, r *http.Request) {
 
 	// Have our big brother sibling do all the real work while we just handle the HTTP interfacing here
-	err := doOrderFromCart(r.Body)
+	status, err := doOrderFromCart(r.Context(), r.Body)
 	if err != nil {
 
 		// Dang - log the error and return it to the caller as well
 		zap.L().Error("failed to store order", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), status)
 	}
+
+	// Return the successful status code
+	w.WriteHeader(status)
 }
 
 // doOrderFromCart does all the heavy lifting for OrderFromCart. It is implemented as a separate
 // function to isolate the message processing from the transport interface.
 //
+// An HTTP status code is always returned, this should be set in the response regardless of whether
+// an error is also returned.
+//
 // See https://cloud.google.com/pubsub/docs/push for documentation of the reader JSON content.
-func doOrderFromCart(reader io.Reader) error {
+func doOrderFromCart(ctx context.Context, reader io.Reader) (int, error) {
+
+	// Lazy load the order service that we wil use to write the order to Firestore
+	svc, err := getOrderService()
+	if err != nil {
+		return http.StatusInternalServerError, err
+	}
 
 	// Unpack the JSON push request message from the request body
 	var pushReq pushRequest
 	if err := json.NewDecoder(reader).Decode(&pushReq); err != nil {
-		return fmt.Errorf("could not decode push request json body: %v", err)
+		return http.StatusBadRequest, fmt.Errorf("could not decode push request json body: %v", err)
 	}
 
 	// Translate the base64 encoded body of the request as a binary byte slice
 	pbBytes, err := base64.StdEncoding.DecodeString(pushReq.Message.Data)
 	if err != nil {
-		return fmt.Errorf("unable to decode base64 data: %w", err)
+		return http.StatusBadRequest, fmt.Errorf("unable to decode base64 data: %w", err)
 	}
 
 	// Unmarshall the protobuf binary message into a shopping cart structure
 	cart, err := unmarshalShoppingCart(pbBytes)
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 
 	// Convert the shopping cart structure to an order
 	order, err := ConvertCartToOrder(cart)
 	if err != nil {
-		return err
+		return http.StatusBadRequest, err
 	}
 
-	// TODO: Logging the entire order is temporary until we have implemented order persistence in Firestore
-	jsonBytes, err := json.Marshal(order)
+	// Save the order to Firestore
+	err = svc.SaveOrder(ctx, order)
 	if err != nil {
-		return fmt.Errorf("unable to marshal order as JSON: %w", err)
+		zap.L().Error("failed to save cart as order", zap.String("cartId", cart.Id), zap.Error(err))
+		return http.StatusInternalServerError, err
 	}
-	zap.L().Info("order content", zap.ByteString("order", jsonBytes))
 
 	// Log the ID of the order we have just ingested
 	zap.L().Info("order received", zap.String("id", order.Id))
 
 	// All done, very happy
-	return nil
+	return http.StatusOK, nil
+}
+
+// getOrderService lazy loads the order service that we use to write orders to Firestore
+func getOrderService() (*service.OrderService, error) {
+
+	// if we already have the service in hand, return it fast
+	if lazyOrderService != nil {
+		return lazyOrderService, nil
+	}
+
+	// Try to load the service and cache it for posterity
+	var err error
+	lazyOrderService, err = service.NewOrderService()
+	return lazyOrderService, err
 }
 
 // unmarshalShoppingCart unpacks the provided binary protobuf message into a shopping cart structure.
@@ -144,9 +178,9 @@ func ConvertCartToOrder(cart *pb.ShoppingCart) (*orders.Order, error) {
 	order.OrderedBy = shopper
 
 	// Finally, add the order items (if any - there really should be)
-	items := make([]*orders.OrderItem, len(cart.CartItems))
+	order.OrderItems = make([]*orders.OrderItem, len(cart.CartItems))
 	for i, pbItem := range cart.CartItems {
-		items[i] = OrderItemItemFromShoppingCartPB(pbItem)
+		order.OrderItems[i] = OrderItemItemFromShoppingCartPB(pbItem)
 	}
 
 	// All done, return the fruit of our labor

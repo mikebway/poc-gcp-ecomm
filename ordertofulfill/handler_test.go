@@ -6,16 +6,19 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
-	pbfulfillment "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
-	"github.com/mikebway/poc-gcp-ecomm/testutil"
-	"go.uber.org/zap"
-	pubsubapi "google.golang.org/api/pubsub/v1"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
+	"testing"
+	"time"
+
+	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
+	pbfulfillment "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
+	"github.com/mikebway/poc-gcp-ecomm/testutil"
+	"go.uber.org/zap"
+	pubsubapi "google.golang.org/api/pubsub/v1"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/service"
@@ -23,8 +26,6 @@ import (
 
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 const (
@@ -282,7 +283,7 @@ func TestServiceLoadFailure(t *testing.T) {
 }
 
 // TestSaveTasksFailure tricks the handler service.FulfillmentService SaveTasks function into failing
-// by messing with the service port number.
+// not using the emulator and so not finding the GCP project referenced by the fulfillment service.
 func TestSaveTasksFailure(t *testing.T) {
 
 	// Put everything back when it should be when we leave this test
@@ -312,17 +313,17 @@ func TestSaveTasksFailure(t *testing.T) {
 	req.Contains(logged, "task save transaction failed", "should have seen the expected SaveTasks failure message in the logs")
 }
 
-// commonTestSetup helps us to be a little DRY (Don't Repeat Yourself) in this file, doing the steps that more
+// commonTestSetup helps us to be a little DRY (Don't Repeat Yourself) in this file, doing the steps that
 // several of the unit test functions in here need to do before going on to anything else.
 func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *service.FulfillmentService) {
 
 	// Avoid having to pass t in to every assertion
 	assert := require.New(t)
 
-	// Clear any manipulations that might have been made to the fulfillment service used by the handled
+	// Clear any manipulations that might have been made to the fulfillment service used by the handler
 	lazyFulfillmentService = nil
 
-	// Make sure that Firestore has been populated with a known set of tasks
+	// Make sure that Firestore has been depopulated of any tasks left over from prior test runs
 	ctx := context.Background()
 	svc := deleteAllMockTasks(ctx, assert)
 

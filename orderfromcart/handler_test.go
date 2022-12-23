@@ -2,25 +2,37 @@ package orderfromcart
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"github.com/mikebway/poc-gcp-ecomm/testutil"
-	pubsubapi "google.golang.org/api/pubsub/v1"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
+	"testing"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	carts "github.com/mikebway/poc-gcp-ecomm/cart/schema"
+	"github.com/mikebway/poc-gcp-ecomm/order/schema"
+	"github.com/mikebway/poc-gcp-ecomm/order/service"
+	pborder "github.com/mikebway/poc-gcp-ecomm/pb/order"
+	"github.com/mikebway/poc-gcp-ecomm/testutil"
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
+	pubsubapi "google.golang.org/api/pubsub/v1"
 )
 
 const (
+	// EnvFirestoreEmulator defines the environment variable name that is used to convey that the Firestore emulator
+	// is running, should be used, and how to connect to it
+	EnvFirestoreEmulator = "FIRESTORE_EMULATOR_HOST"
+
+	// FirestoreEmulatorHost defines the server name and port (in TCP6 terms) of the Firestore emulator
+	FirestoreEmulatorHost = "[::1]:8219"
+
 	// A couple of timestamp strings we can use to derive known time values
 	earlyTimeString = "2022-10-29T16:23:19.123456789-06:00"
 	lateTimeString  = "2022-10-30T09:28:42.987654321-06:00"
@@ -67,23 +79,34 @@ var (
 	itemPrice2 = types.Money{CurrencyCode: itemPriceCurrencyCode, Units: itemPriceUnits2, Nanos: itemPriceNanos2}
 )
 
-// init is used to initialize the shopping cart item "constant" values that cannot be declared
-// as literal constants.
-func init() {
+// TestMain, if defined (it's optional), allows setup code to be run before and after the suite of unit tests
+// for this package.
+func TestMain(m *testing.M) {
+
+	// Ensure that our Firestore requests do not get routed to the live project by mistake
+	service.ProjectId = "demo-" + service.ProjectId
+
+	// Configure the environment variable that informs the Firestore client that it should connect to the
+	// emulator and how to reach it.
+	_ = os.Setenv(EnvFirestoreEmulator, FirestoreEmulatorHost)
 
 	// Shopping cart values
 	t, _ := types.TimestampFromRFC3339Nano(earlyTimeString)
 	shoppingCartCreationTime = t.GetTime()
 	t, _ = types.TimestampFromRFC3339Nano(lateTimeString)
 	shoppingCartClosedTime = t.GetTime()
+
+	// Run all the unit tests
+	m.Run()
 }
 
 // TestOrderFromCartHappyPath exercises the main handler function with good data that should be processed
 // without error.
 func TestOrderFromCartHappyPath(t *testing.T) {
 
-	// Avoid having to pass t in to every assertion
-	req := require.New(t)
+	// do the common setup that we share with some other tests, this includes deleting all tasks
+	// written to Firestore by others
+	req, ctx, svc := commonTestSetup(t)
 
 	// Assemble a mock HTTP request and a means to record the response
 	httpRequest := httptest.NewRequest("POST", "/", buildPushRequest(mockShoppingCartPB()))
@@ -98,6 +121,50 @@ func TestOrderFromCartHappyPath(t *testing.T) {
 	req.Equal(responseRecorder.Code, http.StatusOK, "should have a 200 OK response code")
 	req.Contains(logged, "order received", "should have seen the expected completion message in the logs")
 	req.Contains(logged, "\"id\": \"d1cecab3-5bc0-43d4-aef1-99ad69794313\"", "should have seen the expected order ID in the logs")
+
+	// Load the order we just wrote to confirm it all arrived correctly in Firestore
+	response, err := svc.GetOrderByID(ctx, &pborder.GetOrderByIDRequest{OrderId: shoppingCartId})
+	req.Nil(err, "did not expect an error calling GetOrderByID: %v", err)
+	order := response.Order
+	req.NotNil(order, "expected GetOrderByID response to contain an order")
+
+	// Confirm all the order values are present as expected
+	req.Equal(shoppingCartId, order.Id, "order ID did not match")
+	req.Equal(shoppingCartClosedTime.Unix(), order.SubmissionTime.AsTime().Unix(), "submission time does not match")
+	req.NotNil(order.OrderedBy, "ordered by person missing")
+	req.Equal(shopperId, order.OrderedBy.Id, "ordered by person ID does not match")
+	req.Equal(shopperFamilyName, order.OrderedBy.FamilyName, "ordered by person family name does not match")
+	req.Equal(shopperGivenName, order.OrderedBy.GivenName, "ordered by person given name does not match")
+	req.Equal(shopperMiddleName, order.OrderedBy.MiddleName, "ordered by person middle does not match")
+	req.Equal(shopperDisplayName, order.OrderedBy.DisplayName, "ordered by person display name does not match")
+
+	req.NotNil(order.DeliveryAddress, "delivery address missing")
+	req.Equal(2, len(order.DeliveryAddress.AddressLines), "delivery address line count does not match")
+	req.Equal(addrLine1, order.DeliveryAddress.AddressLines[0], "delivery address line 1 does not match")
+	req.Equal(addrLine2, order.DeliveryAddress.AddressLines[1], "delivery address line 2 does not match")
+	req.Equal(addrLocality, order.DeliveryAddress.Locality, "delivery address locality does not match")
+	req.Equal(addrPostalCode, order.DeliveryAddress.PostalCode, "delivery address postal code does not match")
+	req.Equal(addrRegionCode, order.DeliveryAddress.RegionCode, "delivery address region code does not match")
+
+	req.Equal(2, len(order.OrderItems), "order item count does not match")
+
+	req.NotNil(order.OrderItems[0], "order item 1 missing")
+	req.Equal(itemId1, order.OrderItems[0].Id, "order item 1 ID does not match")
+	req.Equal(itemProdCode1, order.OrderItems[0].ProductCode, "order item 1 product code does not match")
+	req.Equal(itemQuantity1, int(order.OrderItems[0].Quantity), "order item 1 quantity does not match")
+	req.NotNil(order.OrderItems[0].UnitPrice, "order item 1 unit price missing")
+	req.Equal(itemPrice1.CurrencyCode, order.OrderItems[0].UnitPrice.CurrencyCode, "order item 1 price currency does not match")
+	req.Equal(itemPrice1.Units, order.OrderItems[0].UnitPrice.Units, "order item 1 price units does not match")
+	req.Equal(itemPrice1.Nanos, order.OrderItems[0].UnitPrice.Nanos, "order item 1 price nanos does not match")
+
+	req.NotNil(order.OrderItems[1], "order item 2 missing")
+	req.Equal(itemId2, order.OrderItems[1].Id, "order item 2 ID does not match")
+	req.Equal(itemProdCode2, order.OrderItems[1].ProductCode, "order item 2 product code does not match")
+	req.Equal(itemQuantity2, int(order.OrderItems[1].Quantity), "order item 2 quantity does not match")
+	req.NotNil(order.OrderItems[1].UnitPrice, "order item 2 unit price missing")
+	req.Equal(itemPrice2.CurrencyCode, order.OrderItems[1].UnitPrice.CurrencyCode, "order item 2 price currency does not match")
+	req.Equal(itemPrice2.Units, order.OrderItems[1].UnitPrice.Units, "order item 2 price units does not match")
+	req.Equal(itemPrice2.Nanos, order.OrderItems[1].UnitPrice.Nanos, "order item 2 price nanos does not match")
 }
 
 // TestInvalidPushRequest exercises the main handler function with an invalid request that does not
@@ -219,13 +286,110 @@ func TestBodyReaderError(t *testing.T) {
 	req.Contains(logged, "could not decode push request json body: i am a bad reader", "should have seen the expected read failure error in the logs")
 }
 
+// TestServiceLoadFailure looks at how the code handles being unable to establish a service.OrderService.
+func TestServiceLoadFailure(t *testing.T) {
+
+	// Force NewFulfillmentService to fail - be sure to clear that after we are done
+	lazyOrderService = nil
+	service.UnitTestNewOrderServiceError = errors.New("unit test forced error")
+	defer func() { service.UnitTestNewOrderServiceError = nil }()
+
+	// Assemble a mock HTTP request and a means to record the response
+	httpRequest := httptest.NewRequest("POST", "/", buildPushRequest(mockShoppingCartPB()))
+	responseRecorder := httptest.NewRecorder()
+
+	// Wrap a call to the target function so that we can capture its log output
+	logged := testutil.CaptureLogging(func() {
+		OrderFromCart(responseRecorder, httpRequest)
+	})
+
+	// Confirm the result was the sad one that we expected
+	req := require.New(t)
+	req.Equal(http.StatusInternalServerError, responseRecorder.Code, "should have a 500 internal server error code")
+	req.Contains(logged, "could not obtain firestore client", "should have seen the expected firestore client failure message in the logs")
+	req.Contains(logged, service.UnitTestNewOrderServiceError.Error(), "should have seen the expected error message in the logs")
+}
+
+// TestSaveOrderFailure tricks the handler service.OrderService SaveOrder function into failing
+// not using the emulator and so not finding the GCP project referenced by the order service.
+func TestSaveOrderFailure(t *testing.T) {
+
+	// Put everything back when it should be when we leave this test
+	defer func() {
+		lazyOrderService = nil
+		_ = os.Setenv(EnvFirestoreEmulator, FirestoreEmulatorHost)
+	}()
+
+	// Force the handler to obtain a new fulfillment service ...
+	lazyOrderService = nil
+
+	// ... but without using the emulator and targeting a non-existent project
+	_ = os.Setenv(EnvFirestoreEmulator, "")
+
+	// Assemble a mock HTTP request and a means to record the response
+	httpRequest := httptest.NewRequest("POST", "/", buildPushRequest(mockShoppingCartPB()))
+	responseRecorder := httptest.NewRecorder()
+
+	// Wrap a call to the target function so that we can capture its log output
+	logged := testutil.CaptureLogging(func() {
+		OrderFromCart(responseRecorder, httpRequest)
+	})
+
+	// Confirm the result was the sad one that we expected
+	req := require.New(t)
+	req.Equal(http.StatusInternalServerError, responseRecorder.Code, "should have a 500 internal server error code")
+	req.Contains(logged, "failed creating order document in Firestore", "should have seen the expected SaveOrder failure message in the logs")
+}
+
+// commonTestSetup helps us to be a little DRY (Don't Repeat Yourself) in this file, doing the steps that
+// several of the unit test functions in here need to do before going on to anything else.
+func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *service.OrderService) {
+
+	// Avoid having to pass t in to every assertion
+	assert := require.New(t)
+
+	// Clear any manipulations that might have been made to the order service used by the handler
+	lazyOrderService = nil
+
+	// Make sure that Firestore has been depopulated of any orders left over from prior test runs
+	ctx := context.Background()
+	svc := deleteAllMockOrders(ctx, assert)
+
+	// return everything the caller needs to perform their tests
+	return assert, ctx, svc
+}
+
+// deleteAllMockOrders removes our mock orders from the Firestore emulator. We use this to ensure that our tests are
+// run against a clean slate. Returns the order service used to delete the orders for the caller to use for
+// additional tinkering.
+func deleteAllMockOrders(ctx context.Context, assert *require.Assertions) *service.OrderService {
+
+	// Obtain a clean instance of the order service, i.e. one that we know has not been monkeyed with
+	// to return errors for testing purposes
+	svc, err := service.NewOrderService()
+	assert.Nil(err, "did not expect an error obtaining a new OrderService: %v", err)
+
+	// At present, as this test suite stands, there is only one order that we need to take care of
+	// so no query is required to get its ID - it will have the same ID as the mock shopping cart it
+	// was derived from.
+
+	// Establish a document reference for that task path and ask for the document to be deleted
+	order := schema.Order{Id: shoppingCartId}
+	ref := svc.FsClient.Doc(order.StoreRefPath())
+	_, err = ref.Delete(ctx)
+	assert.Nil(err, "failed deleting order ID %s: %v", order.Id, err)
+
+	// Return the order service for additional use by our caller
+	return svc
+}
+
 // BadReader implements the io.Reader interface but deliberately fails every time anyone tries to read from it.
 type BadReader struct {
 	io.Reader
 }
 
 // Read is BadReader being bad at reading but good at helping to test how read failures are handled.
-func (r BadReader) Read(p []byte) (n int, err error) {
+func (r BadReader) Read(_ []byte) (n int, err error) {
 	return 0, errors.New("i am a bad reader")
 }
 
