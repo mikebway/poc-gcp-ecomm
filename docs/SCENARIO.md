@@ -1,6 +1,6 @@
 # e-Commerce Prototype Overview
 
-![POC Component Relationships](docs/poc-gcp-ecomm-scenario.png)
+![POC Component Relationships](poc-gcp-ecomm-scenario.png)
 
 ## Data Flow
 
