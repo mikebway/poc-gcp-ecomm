@@ -2,9 +2,11 @@
 package service
 
 import (
-	"cloud.google.com/go/firestore"
 	"context"
 	"fmt"
+	"time"
+
+	"cloud.google.com/go/firestore"
 	"github.com/google/uuid"
 	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
@@ -13,7 +15,6 @@ import (
 	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"time"
 )
 
 var (
@@ -157,8 +158,8 @@ func (cs *CartService) getShoppingCart(ctx context.Context, cartId string) (*pbc
 	// Form a cart structure to receive the data from the store
 	storedCart := &schema.ShoppingCart{Id: cartId}
 
-	// TODO: wrap cart retrieval in a transaction
-	// TODO: use a query to get everything is a single round trip
+	// TODO: Duh! Firestore supports getting the whole document tree in a single request.
+	//       The implementation below is inefficient and should be replaced with a single Get operation.
 
 	// Ask the firestore client for the specified cart
 	ref := cs.FsClient.Doc(storedCart.StoreRefPath())
