@@ -37,7 +37,7 @@ steps:
 
 # Push our generated image to teh container registry
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/gcr-artifacts/order-service'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/gcr-artifacts/fulfillment-service'
 
 # Fetch the SSH private key that allows "deploy" read access to sibling
 # modules in our monorepo.

@@ -1,8 +1,9 @@
 package service
 
 import (
-	"cloud.google.com/go/firestore"
 	"context"
+
+	"cloud.google.com/go/firestore"
 )
 
 // ItemCollectionGetterProxy defines an interface that a Firestore client service can use to obtain an ItemsCollectionProxy

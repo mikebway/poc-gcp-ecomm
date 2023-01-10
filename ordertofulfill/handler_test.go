@@ -39,7 +39,7 @@ const (
 	// A timestamp string we can use to derive known time values
 	timeString = "2022-10-29T16:23:19.123456789-06:00"
 
-	// A UUID string value that we can use as order OD in our tests
+	// A UUID string value that we can use as order ID in our tests
 	orderId = "d1cecab3-5bc0-43d4-aef1-99ad69794313"
 
 	// Define the person fields that we will use multiple times to define the person that ordered the items
@@ -120,7 +120,7 @@ func TestOrderToFulfillHappyPath(t *testing.T) {
 	})
 
 	// Confirm the result was a happy one
-	req.Equal(responseRecorder.Code, http.StatusCreated, "should have a 200 OK response code")
+	req.Equal(http.StatusCreated, responseRecorder.Code, "should have a 200 OK response code")
 	req.Contains(logged, "established tasks for order", "should have seen the expected completion message in the logs")
 	req.Contains(logged, "\"orderId\": \"d1cecab3-5bc0-43d4-aef1-99ad69794313\"", "should have seen the expected order ID in the logs")
 
@@ -185,7 +185,7 @@ func TestInvalidPushRequest(t *testing.T) {
 	})
 
 	// Confirm the result was a happy one
-	req.Equal(responseRecorder.Code, http.StatusBadRequest, "should have a 400 Bad Request response code")
+	req.Equal(http.StatusBadRequest, responseRecorder.Code, "should have a 400 Bad Request response code")
 	req.Contains(responseRecorder.Body.String(), "could not decode push request json body", "should have seen the expected invalid push request message in the response")
 	req.Contains(logged, "could not decode push request json body", "should have seen the expected invalid base64 encoding message in the logs")
 }
@@ -206,7 +206,7 @@ func TestInvalidBase64(t *testing.T) {
 	})
 
 	// Confirm the result was a happy one
-	req.Equal(responseRecorder.Code, http.StatusBadRequest, "should have a 400 Bad Request response code")
+	req.Equal(http.StatusBadRequest, responseRecorder.Code, "should have a 400 Bad Request response code")
 	req.Contains(responseRecorder.Body.String(), "unable to decode base64 data", "should have seen the expected invalid push request message in the response")
 	req.Contains(logged, "unable to decode base64 data", "should have seen the expected invalid base64 encoding message in the logs")
 }
@@ -228,7 +228,7 @@ func TestWrongBinary(t *testing.T) {
 	})
 
 	// Confirm the result was a happy one
-	req.Equal(responseRecorder.Code, http.StatusBadRequest, "should have a 400 Bad Request response code")
+	req.Equal(http.StatusBadRequest, responseRecorder.Code, "should have a 400 Bad Request response code")
 	req.Contains(responseRecorder.Body.String(), "failed to unmarshal order protobuf message", "should have seen the expected protobuf unmarshal error in the response")
 	req.Contains(logged, "failed to unmarshal order protobuf message", "should have seen the expected protobuf unmarshal error in the logs")
 }
@@ -253,7 +253,7 @@ func TestBodyReaderError(t *testing.T) {
 	})
 
 	// Confirm the result was a happy one
-	req.Equal(responseRecorder.Code, http.StatusBadRequest, "should have a 400 Bad Request response code")
+	req.Equal(http.StatusBadRequest, responseRecorder.Code, "should have a 400 Bad Request response code")
 	req.Contains(responseRecorder.Body.String(), "could not decode push request json body: i am a bad reader", "should have seen the expected read failure error in the response")
 	req.Contains(logged, "could not decode push request json body: i am a bad reader", "should have seen the expected read failure error in the logs")
 }
@@ -277,7 +277,7 @@ func TestServiceLoadFailure(t *testing.T) {
 
 	// Confirm the result was the sad one that we expected
 	req := require.New(t)
-	req.Equal(http.StatusInternalServerError, responseRecorder.Code, "should have a 500 internal server error code")
+	req.Equal(responseRecorder.Code, http.StatusInternalServerError, "should have a 500 internal server error code")
 	req.Contains(logged, "could not obtain firestore client", "should have seen the expected firestore client failure message in the logs")
 	req.Contains(logged, service.UnitTestNewFulfillmentServiceError.Error(), "should have seen the expected error message in the logs")
 }
@@ -434,7 +434,7 @@ func mockOrderPB() []byte {
 	return pbBytes
 }
 
-// buildMockOrder returns a types.Order structure populated with a orderedBy that can be used to
+// buildMockOrder returns a schema.Order structure populated with a orderedBy that can be used to
 // test storing new orders in our tests.
 func buildMockOrder() *ord.Order {
 	return &ord.Order{

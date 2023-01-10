@@ -8,16 +8,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/service"
 	pb "github.com/mikebway/poc-gcp-ecomm/pb/order"
-	_ "github.com/mikebway/poc-gcp-ecomm/types"
 	"go.uber.org/zap"
 	"google.golang.org/api/pubsub/v1"
-	"io"
-	"net/http"
 )
 
 var (
@@ -51,7 +51,7 @@ type pushRequest struct {
 	Subscription string               `json:"subscription,omitempty"`
 }
 
-// OrderToFulfill is Cloud Function entry point. The payload of the HTTP request is an order
+// OrderToFulfill is the Cloud Function entry point. The payload of the HTTP request is an order
 // expressed as a base64 encoded Protocol Buffer message wrapped in a JSON envelop.
 //
 // See https://cloud.google.com/pubsub/docs/push for documentation of the request body JSON content.
@@ -132,7 +132,7 @@ func getFulfillemntService() (*service.FulfillmentService, error) {
 	return lazyFulfillmentService, err
 }
 
-// unmarshalOrder unpacks the provided binary protobuf message into a order structure.
+// unmarshalOrder unpacks the provided binary protobuf message into an order structure.
 func unmarshalOrder(message []byte) (*pb.Order, error) {
 
 	// TODO: we should validate the order is properly populated etc
