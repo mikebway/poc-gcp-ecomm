@@ -1,11 +1,16 @@
 package service
 
 import (
-	"cloud.google.com/go/firestore"
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
+	"testing"
+	"time"
+
+	"cloud.google.com/go/firestore"
 	"github.com/google/uuid"
-	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/service"
+	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
 	pbfulfillment "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
 	"github.com/mikebway/poc-gcp-ecomm/testutil"
@@ -14,10 +19,6 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"os"
-	"strconv"
-	"testing"
-	"time"
 )
 
 const (

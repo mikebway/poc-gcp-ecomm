@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/service"
+	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
 	"github.com/mikebway/poc-gcp-ecomm/order/schema"
 	pborder "github.com/mikebway/poc-gcp-ecomm/pb/order"
 	"go.uber.org/zap"

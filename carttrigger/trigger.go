@@ -6,16 +6,17 @@
 package carttrigger
 
 import (
-	"cloud.google.com/go/pubsub"
 	"context"
 	"fmt"
-	"github.com/golang/protobuf/proto"
-	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
-	"github.com/mikebway/poc-gcp-ecomm/cart/service"
-	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
-	"go.uber.org/zap"
 	"strconv"
 	"time"
+
+	"cloud.google.com/go/pubsub"
+	"github.com/golang/protobuf/proto"
+	"github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
+	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
+	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
+	"go.uber.org/zap"
 )
 
 var (
@@ -164,7 +165,7 @@ func doUpdateTrigger(ctx context.Context, e FirestoreEvent) error {
 type CartServiceClientImpl struct {
 	CartServiceClient
 
-	cartService *service.CartService
+	cartService *cartapi.CartService
 }
 
 // GetCart loads a fully populated shopping cart from Firestore.
@@ -186,7 +187,7 @@ func (c *CartServiceClientImpl) GetCart(ctx context.Context, cartId string) (*pb
 	return svcResponse.Cart, nil
 }
 
-// getClient lazy-loads our underlying service.CartService.
+// getClient lazy-loads our underlying cartapi.CartService.
 func (c *CartServiceClientImpl) lazyLoad() error {
 
 	// In the normal case, we return quickly because the service has been cached before
@@ -196,7 +197,7 @@ func (c *CartServiceClientImpl) lazyLoad() error {
 
 	// Establish our cart service
 	var err error
-	c.cartService, err = service.NewCartService()
+	c.cartService, err = cartapi.NewCartService()
 
 	// Happy or not, we are done
 	return err

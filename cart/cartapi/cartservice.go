@@ -1,5 +1,5 @@
 // Package service contains the gRPC Shopping Cart microservice implementation.
-package service
+package cartapi
 
 import (
 	"context"

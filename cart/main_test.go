@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	svc "github.com/mikebway/poc-gcp-ecomm/cart/service"
-	"github.com/mikebway/poc-gcp-ecomm/testutil"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"net"
 	"os"
 	"testing"
+
+	svc "github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
+	"github.com/mikebway/poc-gcp-ecomm/testutil"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 // resetEnvironment restores environment variables and the like to their default state for testing

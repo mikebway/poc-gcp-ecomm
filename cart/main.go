@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	service2 "github.com/mikebway/poc-gcp-ecomm/cart/service"
 	"net"
 	"os"
+
+	"github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
 
 	"google.golang.org/grpc"
 
@@ -65,7 +66,7 @@ func initializeService() (*grpc.Server, net.Listener, error) {
 	}
 
 	// Initialize our shopping cart service
-	service, err := service2.NewCartService()
+	service, err := cartapi.NewCartService()
 	if err != nil {
 		// Log our discomfort
 		zap.L().Error("NewCartService error", zap.String("error", err.Error()))

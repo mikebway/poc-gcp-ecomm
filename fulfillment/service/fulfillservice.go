@@ -2,17 +2,18 @@
 package service
 
 import (
-	"cloud.google.com/go/firestore"
 	"context"
 	"fmt"
-	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/service"
+	"strconv"
+	"strings"
+	"time"
+
+	"cloud.google.com/go/firestore"
+	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
 	pbfulfillment "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
 	"go.uber.org/zap"
 	"google.golang.org/api/iterator"
-	"strconv"
-	"strings"
-	"time"
 )
 
 const (

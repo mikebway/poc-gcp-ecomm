@@ -1,12 +1,17 @@
 package carttrigger
 
 import (
-	"cloud.google.com/go/pubsub"
 	"context"
 	"fmt"
+	"os"
+	"strconv"
+	"testing"
+	"time"
+
+	"cloud.google.com/go/pubsub"
 	"github.com/google/uuid"
+	"github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
 	"github.com/mikebway/poc-gcp-ecomm/cart/schema"
-	"github.com/mikebway/poc-gcp-ecomm/cart/service"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	pbtypes "github.com/mikebway/poc-gcp-ecomm/pb/types"
 	"github.com/mikebway/poc-gcp-ecomm/testutil"
@@ -14,10 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 	pbmoney "google.golang.org/genproto/googleapis/type/money"
-	"os"
-	"strconv"
-	"testing"
-	"time"
 )
 
 // TODO: Consolidate repeated unit test support data and functions into a shared module
@@ -81,7 +82,7 @@ var (
 	firestoreValueUpdateTime time.Time
 
 	// cartService allows unit tests to write populated shopping carts to Firestore
-	cartService *service.CartService
+	cartService *cartapi.CartService
 
 	// checkedOutCartId is the ID of a cart that we have written to Firestore so that it can be referenced
 	// in multiple unit tests rather than creating new carts every time.
@@ -93,7 +94,7 @@ var (
 func TestMain(m *testing.M) {
 
 	// Ensure that our Firestore and Pub/Sub requests doe not get routed to the live project by mistake
-	service.ProjectId = "demo-" + service.ProjectId
+	cartapi.ProjectId = "demo-" + cartapi.ProjectId
 	TopicProjectId = "demo-" + TopicProjectId
 
 	// Configure the environment variable that informs the Firestore client that it should connect to the
@@ -106,7 +107,7 @@ func TestMain(m *testing.M) {
 
 	// Instantiate our cart service - panic if we cannot obtain one
 	var err error
-	cartService, err = service.NewCartService()
+	cartService, err = cartapi.NewCartService()
 	if err != nil {
 		zap.L().Panic("unable to instantiate cart service / firestore client", zap.Error(err))
 	}

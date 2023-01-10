@@ -1,16 +1,17 @@
-package service
+package cartapi
 
 import (
 	"context"
 	"errors"
+	"os"
+	"testing"
+
 	"github.com/google/uuid"
 	pbcart "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	pbtypes "github.com/mikebway/poc-gcp-ecomm/pb/types"
 	"github.com/stretchr/testify/require"
 	pbmoney "google.golang.org/genproto/googleapis/type/money"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"os"
-	"testing"
 )
 
 const (
