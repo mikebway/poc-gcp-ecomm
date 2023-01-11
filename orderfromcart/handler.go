@@ -13,8 +13,8 @@ import (
 	"net/http"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/mikebway/poc-gcp-ecomm/order/orderapi"
 	orders "github.com/mikebway/poc-gcp-ecomm/order/schema"
-	"github.com/mikebway/poc-gcp-ecomm/order/service"
 	pb "github.com/mikebway/poc-gcp-ecomm/pb/cart"
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	_ "github.com/mikebway/poc-gcp-ecomm/types"
@@ -24,7 +24,7 @@ import (
 
 var (
 	// lazyOrderService is the lazy-loaded order service implementation that we use to save orders to Firestore
-	lazyOrderService *service.OrderService
+	lazyOrderService *orderapi.OrderService
 )
 
 // init is the static initializer used to configure our local and global static variables.
@@ -113,7 +113,7 @@ func doOrderFromCart(ctx context.Context, reader io.Reader) (int, error) {
 }
 
 // getOrderService lazy loads the order service that we use to write orders to Firestore
-func getOrderService() (*service.OrderService, error) {
+func getOrderService() (*orderapi.OrderService, error) {
 
 	// if we already have the service in hand, return it fast
 	if lazyOrderService != nil {
@@ -122,7 +122,7 @@ func getOrderService() (*service.OrderService, error) {
 
 	// Try to load the service and cache it for posterity
 	var err error
-	lazyOrderService, err = service.NewOrderService()
+	lazyOrderService, err = orderapi.NewOrderService()
 	return lazyOrderService, err
 }
 

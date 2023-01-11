@@ -21,7 +21,7 @@ import (
 	pubsubapi "google.golang.org/api/pubsub/v1"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/mikebway/poc-gcp-ecomm/fulfillment/service"
+	"github.com/mikebway/poc-gcp-ecomm/fulfillment/fulfillapi"
 	ord "github.com/mikebway/poc-gcp-ecomm/order/schema"
 
 	"github.com/mikebway/poc-gcp-ecomm/types"
@@ -85,7 +85,7 @@ var (
 func TestMain(m *testing.M) {
 
 	// Ensure that our Firestore requests do not get routed to the live project by mistake
-	service.ProjectId = "demo-" + service.ProjectId
+	fulfillapi.ProjectId = "demo-" + fulfillapi.ProjectId
 
 	// Configure the environment variable that informs the Firestore client that it should connect to the
 	// emulator and how to reach it.
@@ -258,13 +258,13 @@ func TestBodyReaderError(t *testing.T) {
 	req.Contains(logged, "could not decode push request json body: i am a bad reader", "should have seen the expected read failure error in the logs")
 }
 
-// TestServiceLoadFailure looks at how the code handles being unable to establish a service.FulfillmentService.
+// TestServiceLoadFailure looks at how the code handles being unable to establish a fulfillapi.FulfillmentService.
 func TestServiceLoadFailure(t *testing.T) {
 
 	// Force NewFulfillmentService to fail - be sure to clear that after we are done
 	lazyFulfillmentService = nil
-	service.UnitTestNewFulfillmentServiceError = errors.New("unit test forced error")
-	defer func() { service.UnitTestNewFulfillmentServiceError = nil }()
+	fulfillapi.UnitTestNewFulfillmentServiceError = errors.New("unit test forced error")
+	defer func() { fulfillapi.UnitTestNewFulfillmentServiceError = nil }()
 
 	// Assemble a mock HTTP request and a means to record the response
 	httpRequest := httptest.NewRequest("POST", "/", buildPushRequest(mockOrderPB()))
@@ -279,10 +279,10 @@ func TestServiceLoadFailure(t *testing.T) {
 	req := require.New(t)
 	req.Equal(responseRecorder.Code, http.StatusInternalServerError, "should have a 500 internal server error code")
 	req.Contains(logged, "could not obtain firestore client", "should have seen the expected firestore client failure message in the logs")
-	req.Contains(logged, service.UnitTestNewFulfillmentServiceError.Error(), "should have seen the expected error message in the logs")
+	req.Contains(logged, fulfillapi.UnitTestNewFulfillmentServiceError.Error(), "should have seen the expected error message in the logs")
 }
 
-// TestSaveTasksFailure tricks the handler service.FulfillmentService SaveTasks function into failing
+// TestSaveTasksFailure tricks the handler fulfillapi.FulfillmentService SaveTasks function into failing
 // not using the emulator and so not finding the GCP project referenced by the fulfillment service.
 func TestSaveTasksFailure(t *testing.T) {
 
@@ -315,7 +315,7 @@ func TestSaveTasksFailure(t *testing.T) {
 
 // commonTestSetup helps us to be a little DRY (Don't Repeat Yourself) in this file, doing the steps that
 // several of the unit test functions in here need to do before going on to anything else.
-func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *service.FulfillmentService) {
+func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *fulfillapi.FulfillmentService) {
 
 	// Avoid having to pass t in to every assertion
 	assert := require.New(t)
@@ -334,11 +334,11 @@ func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *servi
 // deleteAllMockTasks removes our mock tasks from the Firestore emulator. We use this to ensure that our tests are
 // run against a clean slate. Returns the fulfillment service used to delete the tasks for the caller to use for
 // additional tinkering.
-func deleteAllMockTasks(ctx context.Context, assert *require.Assertions) *service.FulfillmentService {
+func deleteAllMockTasks(ctx context.Context, assert *require.Assertions) *fulfillapi.FulfillmentService {
 
 	// Obtain a clean instance of the fulfillment service, i.e. one that we know has not been monkeyed with
 	// to return errors for testing purposes
-	svc, err := service.NewFulfillmentService()
+	svc, err := fulfillapi.NewFulfillmentService()
 	assert.Nil(err, "did not expect an error obtaining a new FulfillmentService: %v", err)
 
 	// Start by forming a pbfulfillment.GetTasksRequest to retrieve the first page of results ...

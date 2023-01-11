@@ -1,19 +1,20 @@
 package ordertrigger
 
 import (
-	"cloud.google.com/go/pubsub"
 	"context"
 	"fmt"
+	"os"
+	"testing"
+	"time"
+
+	"cloud.google.com/go/pubsub"
 	"github.com/google/uuid"
+	"github.com/mikebway/poc-gcp-ecomm/order/orderapi"
 	"github.com/mikebway/poc-gcp-ecomm/order/schema"
-	"github.com/mikebway/poc-gcp-ecomm/order/service"
 	"github.com/mikebway/poc-gcp-ecomm/testutil"
 	"github.com/mikebway/poc-gcp-ecomm/types"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
-	"os"
-	"testing"
-	"time"
 )
 
 // TODO: Consolidate repeated unit test support data and functions into a shared module
@@ -62,7 +63,7 @@ const (
 
 var (
 	// orderService allows unit tests to write populated orders to Firestore
-	orderService *service.OrderService
+	orderService *orderapi.OrderService
 
 	// The time our mock order was submitted
 	orderSubmissionTime time.Time
@@ -80,7 +81,7 @@ var (
 func TestMain(m *testing.M) {
 
 	// Ensure that our Firestore and Pub/Sub requests do not get routed to the live project by mistake
-	service.ProjectId = "demo-" + service.ProjectId
+	orderapi.ProjectId = "demo-" + orderapi.ProjectId
 	TopicProjectId = "demo-" + TopicProjectId
 
 	// Configure the environment variable that informs the Firestore client that it should connect to the
@@ -93,7 +94,7 @@ func TestMain(m *testing.M) {
 
 	// Instantiate our order service - panic if we cannot obtain one
 	var err error
-	orderService, err = service.NewOrderService()
+	orderService, err = orderapi.NewOrderService()
 	if err != nil {
 		zap.L().Panic("unable to instantiate order service / firestore client", zap.Error(err))
 	}
@@ -156,7 +157,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = OrderTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
@@ -167,7 +168,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	// Repeat a second time (would never happen for the same order in real life) in order
 	// to exercise the already loaded paths of the order service and pubsub client lazy loaders.
 	logged = testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = OrderTrigger(ctx, *event)
 	})
 	req.Nil(err, "no error was expected on second run: %v", err)
 	req.Contains(logged, "published order", "did not see happy path log message on second run")
@@ -189,7 +190,7 @@ func TestOrderNotExist(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = OrderTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
@@ -221,7 +222,7 @@ func TestPublishError(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = OrderTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output

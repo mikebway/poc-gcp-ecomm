@@ -8,7 +8,7 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/golang/protobuf/proto"
-	"github.com/mikebway/poc-gcp-ecomm/order/service"
+	"github.com/mikebway/poc-gcp-ecomm/order/orderapi"
 	pborder "github.com/mikebway/poc-gcp-ecomm/pb/order"
 	"go.uber.org/zap"
 )
@@ -89,13 +89,13 @@ func init() {
 	pubSubClient = &PubSubClientImpl{}
 }
 
-// UpdateTrigger receives a document update Firestore trigger event. The function is deployed with a trigger
+// OrderTrigger receives a document update Firestore trigger event. The function is deployed with a trigger
 // configuration (see Makefile) that will notify the handler of all updates to the root document of an Order.
-func UpdateTrigger(ctx context.Context, e FirestoreEvent) error {
+func OrderTrigger(ctx context.Context, e FirestoreEvent) error {
 
 	// Have our big brother sibling do all the real work while we just handle the trigger interfacing and
 	// error logging here
-	err := doUpdateTrigger(ctx, e)
+	err := doCartTrigger(ctx, e)
 	if err != nil {
 
 		// Dang - log the error and return it to the caller as well
@@ -107,9 +107,9 @@ func UpdateTrigger(ctx context.Context, e FirestoreEvent) error {
 	return nil
 }
 
-// doUpdateTrigger does all the heavy lifting for UpdateTrigger. It is implemented as a separate
+// doCartTrigger does all the heavy lifting for CartTrigger. It is implemented as a separate
 // function to isolate the message processing from the trigger interface.
-func doUpdateTrigger(ctx context.Context, e FirestoreEvent) error {
+func doCartTrigger(ctx context.Context, e FirestoreEvent) error {
 
 	// We need to log multiple times so just get the logger and be done with that
 	logger := zap.L()
@@ -151,7 +151,7 @@ func doUpdateTrigger(ctx context.Context, e FirestoreEvent) error {
 type OrderServiceClientImpl struct {
 	OrderServiceClient
 
-	orderService *service.OrderService
+	orderService *orderapi.OrderService
 }
 
 // GetOrder loads a fully populated order from Firestore.
@@ -173,7 +173,7 @@ func (c *OrderServiceClientImpl) GetOrder(ctx context.Context, orderId string) (
 	return svcResponse.Order, nil
 }
 
-// getClient lazy-loads our underlying service.OrderService.
+// getClient lazy-loads our underlying orderapi.OrderService.
 func (c *OrderServiceClientImpl) lazyLoad() error {
 
 	// In the normal case, we return quickly because the service has been cached before
@@ -183,7 +183,7 @@ func (c *OrderServiceClientImpl) lazyLoad() error {
 
 	// Establish our order service
 	var err error
-	c.orderService, err = service.NewOrderService()
+	c.orderService, err = orderapi.NewOrderService()
 
 	// Happy or not, we are done
 	return err

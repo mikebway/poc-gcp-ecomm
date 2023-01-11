@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/mikebway/poc-gcp-ecomm/fulfillment/service"
-	"github.com/mikebway/poc-gcp-ecomm/testutil"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc"
 	"net"
 	"os"
 	"testing"
+
+	"github.com/mikebway/poc-gcp-ecomm/fulfillment/fulfillapi"
+	"github.com/mikebway/poc-gcp-ecomm/testutil"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
 )
 
 // resetEnvironment restores environment variables and the like to their default state for testing
@@ -19,7 +20,7 @@ func resetEnvironment() {
 	_ = os.Setenv(EnvGRPCPort, "")
 
 	// Clear the request for the NewFulfillmentService to return a mock error
-	service.UnitTestNewFulfillmentServiceError = nil
+	fulfillapi.UnitTestNewFulfillmentServiceError = nil
 }
 
 // TestMainFailure is the only test we can run against the main() function as we deliberately force a failure
@@ -35,7 +36,7 @@ func TestMainFailure(t *testing.T) {
 
 	// Have the NewFulfillmentService call return an error
 	const errorMsg = "TestMainFailure mock error"
-	service.UnitTestNewFulfillmentServiceError = fmt.Errorf(errorMsg)
+	fulfillapi.UnitTestNewFulfillmentServiceError = fmt.Errorf(errorMsg)
 
 	// Wrap a call to main() to capture its log output
 	logged := testutil.CaptureLogging(func() {
@@ -175,7 +176,7 @@ func TestNoFulfillmentServiceInitialization(t *testing.T) {
 
 	// Have the NewFulfillmentService call return an error
 	const errorMsg = "TestNoFulfillmentServiceInitialization mock error"
-	service.UnitTestNewFulfillmentServiceError = fmt.Errorf(errorMsg)
+	fulfillapi.UnitTestNewFulfillmentServiceError = fmt.Errorf(errorMsg)
 
 	// Initialize the service while capture it's log output
 	var svc *grpc.Server

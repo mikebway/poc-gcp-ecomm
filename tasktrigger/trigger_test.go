@@ -9,8 +9,8 @@ import (
 
 	"cloud.google.com/go/pubsub"
 	"github.com/google/uuid"
+	"github.com/mikebway/poc-gcp-ecomm/fulfillment/fulfillapi"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
-	"github.com/mikebway/poc-gcp-ecomm/fulfillment/service"
 	pbfulfillment "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
 	"github.com/mikebway/poc-gcp-ecomm/testutil"
 	"github.com/mikebway/poc-gcp-ecomm/types"
@@ -70,7 +70,7 @@ const (
 
 var (
 	// fulfillmentService allows unit tests to write populated tasks to Firestore
-	fulfillmentService *service.FulfillmentService
+	fulfillmentService *fulfillapi.FulfillmentService
 
 	// The time our mock task was submitted
 	taskSubmissionTime time.Time
@@ -88,7 +88,7 @@ var (
 func TestMain(m *testing.M) {
 
 	// Ensure that our Firestore and Pub/Sub requests do not get routed to the live project by mistake
-	service.ProjectId = "demo-" + service.ProjectId
+	fulfillapi.ProjectId = "demo-" + fulfillapi.ProjectId
 	TopicProjectId = "demo-" + TopicProjectId
 
 	// Configure the environment variable that informs the Firestore client that it should connect to the
@@ -101,7 +101,7 @@ func TestMain(m *testing.M) {
 
 	// Instantiate our task service - panic if we cannot obtain one
 	var err error
-	fulfillmentService, err = service.NewFulfillmentService()
+	fulfillmentService, err = fulfillapi.NewFulfillmentService()
 	if err != nil {
 		zap.L().Panic("unable to instantiate fulfillment service / firestore client", zap.Error(err))
 	}
@@ -164,7 +164,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = CartTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
@@ -175,7 +175,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	// Repeat a second time (would never happen for the same task in real life) in task
 	// to exercise the already loaded paths of the task service and pubsub client lazy loaders.
 	logged = testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = CartTrigger(ctx, *event)
 	})
 	req.Nil(err, "no error was expected on second run: %v", err)
 	req.Contains(logged, "published task", "did not see happy path log message on second run")
@@ -197,7 +197,7 @@ func TestTaskNotExist(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = CartTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
@@ -229,7 +229,7 @@ func TestPublishError(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = CartTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output

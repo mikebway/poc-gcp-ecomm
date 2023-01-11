@@ -1,4 +1,4 @@
-package service
+package fulfillapi
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"github.com/google/uuid"
-	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
+	cartapi "github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
 	pbfulfillment "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
 	"github.com/mikebway/poc-gcp-ecomm/testutil"
@@ -73,19 +73,19 @@ var (
 // that match the query. For unit test purposes, this version always returns errors when trying to iterate over
 // the result set.
 type UTQueryExecProxy struct {
-	cartsvc.QueryExecutionProxy
+	cartapi.QueryExecutionProxy
 }
 
 // UTDocIteratorProxy is a unit test implementation of the DocumentIteratorProxy interface that always returns
 // errors when trying to iterate over the result set.
 type UTDocIteratorProxy struct {
-	cartsvc.DocumentIteratorProxy
+	cartapi.DocumentIteratorProxy
 }
 
 // Documents returns a DocumentIteratorProxy wrapping the results of the given query. Unit test implementations
 // of this function can be programmed to return an iterator that can insert errors into the flow but this
 // production ready implementation returns a transparent passthrough iterator.
-func (q *UTQueryExecProxy) Documents(ctx context.Context, query firestore.Query) cartsvc.DocumentIteratorProxy {
+func (q *UTQueryExecProxy) Documents(ctx context.Context, query firestore.Query) cartapi.DocumentIteratorProxy {
 	return &UTDocIteratorProxy{}
 }
 
@@ -104,7 +104,7 @@ func (p *UTDocIteratorProxy) Stop() {
 // UTDocRefProxy is a unit test implementation of the DocumentRefProxy interface that allows
 // unit tests to have Firestore operations return errors.
 type UTDocRefProxy struct {
-	cartsvc.DocumentRefProxy
+	cartapi.DocumentRefProxy
 }
 
 // Create is a pass through to the firestore.DocumentRef Create function that allows
@@ -128,7 +128,7 @@ func (p *UTDocRefProxy) Update(doc *firestore.DocumentRef, ctx context.Context, 
 // UTDocSnapProxy is a unit test implementation of the DocumentSnapshotProxy interface that allows
 // unit tests to have Firestore operations return errors.
 type UTDocSnapProxy struct {
-	cartsvc.DocumentRefProxy
+	cartapi.DocumentRefProxy
 }
 
 // DataTo is a direct pass through to the firestore.DocumentSnapshot DataTo function that allows

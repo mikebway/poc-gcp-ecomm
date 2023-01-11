@@ -1,5 +1,5 @@
 // Package service contains the gRPC Fulfillment microservice implementation.
-package service
+package fulfillapi
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	cartsvc "github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
+	cartapi "github.com/mikebway/poc-gcp-ecomm/cart/cartapi"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
 	pbfulfillment "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
 	"go.uber.org/zap"
@@ -51,15 +51,15 @@ type FulfillmentService struct {
 
 	// drProxy is used to allow unit tests to intercept firestore.DocumentRef function calls
 	// and insert errors etc. into the responses.
-	drProxy cartsvc.DocumentRefProxy
+	drProxy cartapi.DocumentRefProxy
 
 	// dsProxy is used to allow unit tests to intercept firestore.DocumentSnapshot function calls
 	// and insert errors etc. into the responses.
-	dsProxy cartsvc.DocumentSnapshotProxy
+	dsProxy cartapi.DocumentSnapshotProxy
 
 	// queryProxy is used to allow unit tests to intercept firestore.Query function calls
 	// and insert errors etc. into the responses of the document iterator that the query returns.
-	queryProxy cartsvc.QueryExecutionProxy
+	queryProxy cartapi.QueryExecutionProxy
 }
 
 // NewFulfillmentService is a factory method returning an instance of our shopping cart service.
@@ -68,9 +68,9 @@ func NewFulfillmentService() (*FulfillmentService, error) {
 	// Build our service instance here with our default, direct passthrough, interception proxies
 	// for firestore.DocumentRef and firestore.DocumentSnapshot function calls
 	svc := &FulfillmentService{
-		drProxy:    &cartsvc.DocRefProxy{},
-		dsProxy:    &cartsvc.DocSnapProxy{},
-		queryProxy: &cartsvc.QueryExecProxy{},
+		drProxy:    &cartapi.DocRefProxy{},
+		dsProxy:    &cartapi.DocSnapProxy{},
+		queryProxy: &cartapi.QueryExecProxy{},
 	}
 
 	// Obtain a firestore client and stuff that in the service instance

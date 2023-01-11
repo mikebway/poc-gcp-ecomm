@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/mikebway/poc-gcp-ecomm/order/service"
 	"net"
 	"os"
+
+	"github.com/mikebway/poc-gcp-ecomm/order/orderapi"
 
 	"google.golang.org/grpc"
 
@@ -65,7 +66,7 @@ func initializeService() (*grpc.Server, net.Listener, error) {
 	}
 
 	// Initialize our order service
-	svc, err := service.NewOrderService()
+	svc, err := orderapi.NewOrderService()
 	if err != nil {
 		// Log our discomfort
 		zap.L().Error("NewOrderService error", zap.String("error", err.Error()))

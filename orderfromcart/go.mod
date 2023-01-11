@@ -4,11 +4,11 @@ go 1.19
 
 require (
 	github.com/golang/protobuf v1.5.2
-	github.com/mikebway/poc-gcp-ecomm/cart v0.0.0-20230106151957-dedb32a889cf
+	github.com/mikebway/poc-gcp-ecomm/cart v0.0.0-20221129030511-0a76472b6df9
 	github.com/mikebway/poc-gcp-ecomm/order v0.0.0-20230106151957-dedb32a889cf
-	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20230106151957-dedb32a889cf
+	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20221129030511-0a76472b6df9
 	github.com/mikebway/poc-gcp-ecomm/testutil v0.0.0-20221217173027-a3d94b3a7899
-	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20230106151957-dedb32a889cf
+	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20221129030511-0a76472b6df9
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.23.0
 	google.golang.org/api v0.103.0

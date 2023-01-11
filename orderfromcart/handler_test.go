@@ -16,8 +16,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	carts "github.com/mikebway/poc-gcp-ecomm/cart/schema"
+	"github.com/mikebway/poc-gcp-ecomm/order/orderapi"
 	"github.com/mikebway/poc-gcp-ecomm/order/schema"
-	"github.com/mikebway/poc-gcp-ecomm/order/service"
 	pborder "github.com/mikebway/poc-gcp-ecomm/pb/order"
 	"github.com/mikebway/poc-gcp-ecomm/testutil"
 	"github.com/mikebway/poc-gcp-ecomm/types"
@@ -84,7 +84,7 @@ var (
 func TestMain(m *testing.M) {
 
 	// Ensure that our Firestore requests do not get routed to the live project by mistake
-	service.ProjectId = "demo-" + service.ProjectId
+	orderapi.ProjectId = "demo-" + orderapi.ProjectId
 
 	// Configure the environment variable that informs the Firestore client that it should connect to the
 	// emulator and how to reach it.
@@ -286,13 +286,13 @@ func TestBodyReaderError(t *testing.T) {
 	req.Contains(logged, "could not decode push request json body: i am a bad reader", "should have seen the expected read failure error in the logs")
 }
 
-// TestServiceLoadFailure looks at how the code handles being unable to establish a service.OrderService.
+// TestServiceLoadFailure looks at how the code handles being unable to establish a orderapi.OrderService.
 func TestServiceLoadFailure(t *testing.T) {
 
 	// Force NewFulfillmentService to fail - be sure to clear that after we are done
 	lazyOrderService = nil
-	service.UnitTestNewOrderServiceError = errors.New("unit test forced error")
-	defer func() { service.UnitTestNewOrderServiceError = nil }()
+	orderapi.UnitTestNewOrderServiceError = errors.New("unit test forced error")
+	defer func() { orderapi.UnitTestNewOrderServiceError = nil }()
 
 	// Assemble a mock HTTP request and a means to record the response
 	httpRequest := httptest.NewRequest("POST", "/", buildPushRequest(mockShoppingCartPB()))
@@ -307,10 +307,10 @@ func TestServiceLoadFailure(t *testing.T) {
 	req := require.New(t)
 	req.Equal(http.StatusInternalServerError, responseRecorder.Code, "should have a 500 internal server error code")
 	req.Contains(logged, "could not obtain firestore client", "should have seen the expected firestore client failure message in the logs")
-	req.Contains(logged, service.UnitTestNewOrderServiceError.Error(), "should have seen the expected error message in the logs")
+	req.Contains(logged, orderapi.UnitTestNewOrderServiceError.Error(), "should have seen the expected error message in the logs")
 }
 
-// TestSaveOrderFailure tricks the handler service.OrderService SaveOrder function into failing
+// TestSaveOrderFailure tricks the handler orderapi.OrderService SaveOrder function into failing
 // not using the emulator and so not finding the GCP project referenced by the order service.
 func TestSaveOrderFailure(t *testing.T) {
 
@@ -343,7 +343,7 @@ func TestSaveOrderFailure(t *testing.T) {
 
 // commonTestSetup helps us to be a little DRY (Don't Repeat Yourself) in this file, doing the steps that
 // several of the unit test functions in here need to do before going on to anything else.
-func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *service.OrderService) {
+func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *orderapi.OrderService) {
 
 	// Avoid having to pass t in to every assertion
 	assert := require.New(t)
@@ -362,11 +362,11 @@ func commonTestSetup(t *testing.T) (*require.Assertions, context.Context, *servi
 // deleteAllMockOrders removes our mock orders from the Firestore emulator. We use this to ensure that our tests are
 // run against a clean slate. Returns the order service used to delete the orders for the caller to use for
 // additional tinkering.
-func deleteAllMockOrders(ctx context.Context, assert *require.Assertions) *service.OrderService {
+func deleteAllMockOrders(ctx context.Context, assert *require.Assertions) *orderapi.OrderService {
 
 	// Obtain a clean instance of the order service, i.e. one that we know has not been monkeyed with
 	// to return errors for testing purposes
-	svc, err := service.NewOrderService()
+	svc, err := orderapi.NewOrderService()
 	assert.Nil(err, "did not expect an error obtaining a new OrderService: %v", err)
 
 	// At present, as this test suite stands, there is only one order that we need to take care of

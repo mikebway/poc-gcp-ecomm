@@ -13,8 +13,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"
+	"github.com/mikebway/poc-gcp-ecomm/fulfillment/fulfillapi"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
-	"github.com/mikebway/poc-gcp-ecomm/fulfillment/service"
 	pb "github.com/mikebway/poc-gcp-ecomm/pb/order"
 	"go.uber.org/zap"
 	"google.golang.org/api/pubsub/v1"
@@ -28,7 +28,7 @@ var (
 	productTasks map[string][]*schema.Task
 
 	// lazyFulfillmentService is the lazy-loaded fulfillment service implementation that we use to save tasks to Firestore
-	lazyFulfillmentService *service.FulfillmentService
+	lazyFulfillmentService *fulfillapi.FulfillmentService
 )
 
 // init is the static initializer used to configure our local and global static variables.
@@ -119,7 +119,7 @@ func doOrderToFulfill(ctx context.Context, reader io.Reader) (int, error) {
 }
 
 // getFulfillemntService lazy loads the fulfillment service that we use to write tasks to Firestore
-func getFulfillemntService() (*service.FulfillmentService, error) {
+func getFulfillemntService() (*fulfillapi.FulfillmentService, error) {
 
 	// if we already have the service in hand, return it fast
 	if lazyFulfillmentService != nil {
@@ -128,7 +128,7 @@ func getFulfillemntService() (*service.FulfillmentService, error) {
 
 	// Try to load the service and cache it for posterity
 	var err error
-	lazyFulfillmentService, err = service.NewFulfillmentService()
+	lazyFulfillmentService, err = fulfillapi.NewFulfillmentService()
 	return lazyFulfillmentService, err
 }
 

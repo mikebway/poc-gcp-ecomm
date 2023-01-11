@@ -46,6 +46,7 @@ compile: ## Compile the Go code locally
 .PHONY: gomod
 gomod: ## Ensure that monorepo pseudo-versions are up to date with latest github commit
 	go mod edit -droprequire=github.com/mikebway/poc-gcp-ecomm/cart
+	go mod edit -droprequire=github.com/mikebway/poc-gcp-ecomm/order
 	go mod edit -droprequire=github.com/mikebway/poc-gcp-ecomm/pb
 	go mod edit -droprequire=github.com/mikebway/poc-gcp-ecomm/types
 	go mod edit -droprequire=github.com/mikebway/poc-gcp-ecomm/util

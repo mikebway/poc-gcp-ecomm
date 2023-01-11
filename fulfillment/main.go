@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/mikebway/poc-gcp-ecomm/fulfillment/service"
 	"net"
 	"os"
+
+	"github.com/mikebway/poc-gcp-ecomm/fulfillment/fulfillapi"
 
 	"google.golang.org/grpc"
 
@@ -65,7 +66,7 @@ func initializeService() (*grpc.Server, net.Listener, error) {
 	}
 
 	// Initialize our fulfillment service
-	svc, err := service.NewFulfillmentService()
+	svc, err := fulfillapi.NewFulfillmentService()
 	if err != nil {
 		// Log our discomfort
 		zap.L().Error("NewFulfillmentService error", zap.String("error", err.Error()))

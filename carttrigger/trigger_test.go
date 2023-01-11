@@ -177,7 +177,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = CartTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
@@ -188,7 +188,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	// Repeat a second time (would never happen for the same cart in real life) in order
 	// to exercise the already loaded paths of the cart service and pubsub client lazy loaders.
 	logged = testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = CartTrigger(ctx, *event)
 	})
 	req.Nil(err, "no error was expected on second run: %v", err)
 	req.Contains(logged, "published checked out cart", "did not see happy path log message on second run")
@@ -211,7 +211,7 @@ func TestNotCheckedOut(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = CartTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
@@ -235,7 +235,7 @@ func TestCartNotExist(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = CartTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
@@ -267,7 +267,7 @@ func TestPublishError(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = UpdateTrigger(ctx, *event)
+		err = CartTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output

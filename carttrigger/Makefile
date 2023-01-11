@@ -1,6 +1,6 @@
 PROJECT_ID := poc-gcp-ecomm
 GCP_REGION := us-central1
-TRIGGER_NAME := UpdateTrigger
+TRIGGER_NAME := CartTrigger
 RUNTIME := go119
 
 .DEFAULT_GOAL := help
