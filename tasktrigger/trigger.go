@@ -89,9 +89,9 @@ func init() {
 	pubSubClient = &PubSubClientImpl{}
 }
 
-// CartTrigger receives a document update Firestore trigger event. The function is deployed with a trigger
+// TaskTrigger receives a document update Firestore trigger event. The function is deployed with a trigger
 // configuration (see Makefile) that will notify the handler of all updates to the root document of a Task.
-func CartTrigger(ctx context.Context, e FirestoreEvent) error {
+func TaskTrigger(ctx context.Context, e FirestoreEvent) error {
 
 	// Have our big brother sibling do all the real work while we just handle the trigger interfacing and
 	// error logging here

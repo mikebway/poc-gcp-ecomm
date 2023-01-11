@@ -22,10 +22,10 @@ help: ## List of available commands
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 .PHONY: build
-build: gomod test ## Build the gRPC service container locally after running unit tests
+build: gomod compile ## Cloud Function builds do nothing locally other than ensure that go.mod is up to date and that the code compiles
 
 .PHONY: deploy
-deploy: ## Deploy the the trigger Cloud Function
+deploy: gomod ## Deploy the the trigger Cloud Function
 	gcloud functions deploy $(FUNCTION_NAME) --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
      --entry-point=$(ENTRY_POINT) --trigger-http --allow-unauthenticated --ingress-settings=internal-only
 	-gcloud pubsub subscriptions create ${SUBSCRIPTION_ID} --topic-project=${PROJECT_ID} --topic=${TASK_TOPIC} \

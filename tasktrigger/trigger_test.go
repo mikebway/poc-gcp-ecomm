@@ -164,7 +164,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = CartTrigger(ctx, *event)
+		err = TaskTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
@@ -175,7 +175,7 @@ func TestHandlerHappyPath(t *testing.T) {
 	// Repeat a second time (would never happen for the same task in real life) in task
 	// to exercise the already loaded paths of the task service and pubsub client lazy loaders.
 	logged = testutil.CaptureLogging(func() {
-		err = CartTrigger(ctx, *event)
+		err = TaskTrigger(ctx, *event)
 	})
 	req.Nil(err, "no error was expected on second run: %v", err)
 	req.Contains(logged, "published task", "did not see happy path log message on second run")
@@ -197,7 +197,7 @@ func TestTaskNotExist(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = CartTrigger(ctx, *event)
+		err = TaskTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
@@ -229,7 +229,7 @@ func TestPublishError(t *testing.T) {
 	ctx := context.Background()
 	var err error
 	logged := testutil.CaptureLogging(func() {
-		err = CartTrigger(ctx, *event)
+		err = TaskTrigger(ctx, *event)
 	})
 
 	// There should have been no errors and some straightforward log output
