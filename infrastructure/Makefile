@@ -48,10 +48,10 @@ setup: ${MERGED_CART_PROTO} ## Setup the Google Cloud infrastructure
 	-gcloud pubsub topics create ${SHOPPING_CART_TOPIC} --quiet --schema ${SHOPPING_CART_SCHEMA} --message-retention-duration=7d --message-encoding=binary
 
 	# Declare the Pub/Sub topic that moves orders to the Fulfillment system
-	-gcloud pubsub topics create ${ORDER_TOPIC} --quiet --message-retention-duration=7d --message-encoding=binary
+	-gcloud pubsub topics create ${ORDER_TOPIC} --quiet --message-retention-duration=7d
 
 	# Declare the Pub/Sub topic that submits fulfillment tasks to the task-distributor Cloud Function
-	-gcloud pubsub topics create ${FULFILLMENT_TASK_TOPIC} --quiet --message-retention-duration=7d --message-encoding=binary
+	-gcloud pubsub topics create ${FULFILLMENT_TASK_TOPIC} --quiet --message-retention-duration=7d
 
 
 .PHONY: teardown

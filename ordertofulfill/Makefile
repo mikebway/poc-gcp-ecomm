@@ -8,7 +8,7 @@ ENTRY_POINT := OrderToFulfill
 RUNTIME := go119
 
 # Pub/Sub topic name to subscribe to
-ORDER_TOPIC := ecomm-order
+PUBSUB_TOPIC := ecomm-order
 
 # Name/ID to give to Pub/Sub subscription
 SUBSCRIPTION_ID := ${FUNCTION_NAME}
@@ -28,8 +28,9 @@ build: gomod compile ## Cloud Function builds do nothing locally other than ensu
 deploy: gomod ## Deploy the the trigger Cloud Function
 	gcloud functions deploy $(FUNCTION_NAME) --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
      --entry-point=$(ENTRY_POINT) --trigger-http --allow-unauthenticated --ingress-settings=internal-only
-	-gcloud pubsub subscriptions create ${SUBSCRIPTION_ID} --topic-project=${PROJECT_ID} --topic=${ORDER_TOPIC} \
-		--push-endpoint=$(gcloud functions describe ${FUNCTION_NAME} --gen2 --region=${GCP_REGION} --format="value(serviceConfig.uri)")
+	-TEMP=`gcloud functions describe ${FUNCTION_NAME} --gen2 --region=${GCP_REGION} --format="value(serviceConfig.uri)"`; \
+	gcloud pubsub subscriptions create ${SUBSCRIPTION_ID} --topic-project=${PROJECT_ID} --topic=${PUBSUB_TOPIC} \
+		--push-endpoint=$$TEMP
 	# Expect an error in the line above - it will always fail if the subscription already exists
 	# TODO: Implement authentication for the OrderToFulfill Cloud Task target function
 

@@ -51,12 +51,12 @@ github.com/googleapis/gax-go/v2 v2.7.0 h1:IcsPKeInNvYi7eqSaDjiZqDDKu5rsmunY0Y1Yu
 github.com/googleapis/gax-go/v2 v2.7.0/go.mod h1:TEop28CZZQ2y+c0VxMUmu1lV+fQx57QpBWsYpwqHJx8=
 github.com/mikebway/poc-gcp-ecomm/fulfillment v0.0.0-20230106151957-dedb32a889cf h1:lvnGbVNjSa9R8vwAIFQZCJyR5fLr7snuoPoDqu7Lun8=
 github.com/mikebway/poc-gcp-ecomm/fulfillment v0.0.0-20230106151957-dedb32a889cf/go.mod h1:3Cl7k+xbciAq0fHEoSe62mzkxNdSBaZ5onAyWdsFZS8=
-github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20230111123838-86b6dc1fa189 h1:o1uWaSLxnvw6NKAve5ymyAsdpGK6g6Nwm/vBWKKEoJE=
-github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20230111123838-86b6dc1fa189/go.mod h1:OKV+RFp9e9UskiQbiJXOg84hJzg7mzF0oOmPybXU3Yo=
+github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20230111143213-6779b96c5a2e h1:2/Rt3I1RgAILKCd7fcloOUYxkBD7586Kbji+KVabdck=
+github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20230111143213-6779b96c5a2e/go.mod h1:OKV+RFp9e9UskiQbiJXOg84hJzg7mzF0oOmPybXU3Yo=
 github.com/mikebway/poc-gcp-ecomm/testutil v0.0.0-20230106151957-dedb32a889cf h1:QJWkt+yIO5R8KbPyezXiZf8MabXDjif/szmpTk0qanM=
 github.com/mikebway/poc-gcp-ecomm/testutil v0.0.0-20230106151957-dedb32a889cf/go.mod h1:v/vRKuUwZjY7uqbcpUwsrVQW+UxXGis9af/nN2xojqE=
-github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20230111123838-86b6dc1fa189 h1:lyl2+cXvbxBp7RFAWx2/wZJIT8Q2q2kpPgtLVrB/ERA=
-github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20230111123838-86b6dc1fa189/go.mod h1:5E3x60+oQOWMJ+MzKcLsqP+2l0gcO0T1bbqa5z1E0q8=
+github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20230111143213-6779b96c5a2e h1:mAxe9qaKDNomPQK58+nOawf2DkmewgesXT5YwM1Yf6Q=
+github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20230111143213-6779b96c5a2e/go.mod h1:5E3x60+oQOWMJ+MzKcLsqP+2l0gcO0T1bbqa5z1E0q8=
 github.com/pkg/errors v0.8.1 h1:iURUrRGxPUNPdy5/HRSm+Yj6okJ6UtLINN0Q9M4+h3I=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
