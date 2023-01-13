@@ -5,9 +5,9 @@ go 1.19
 require (
 	github.com/golang/protobuf v1.5.2
 	github.com/mikebway/poc-gcp-ecomm/fulfillment v0.0.0-20230106151957-dedb32a889cf
-	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20230111143213-6779b96c5a2e
+	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20230113114208-54636b16ae9f
 	github.com/mikebway/poc-gcp-ecomm/testutil v0.0.0-20230106151957-dedb32a889cf
-	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20230111143213-6779b96c5a2e
+	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20230113114208-54636b16ae9f
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
 	google.golang.org/api v0.106.0

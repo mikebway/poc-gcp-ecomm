@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 	"time"
 
@@ -208,9 +207,7 @@ func buildHttpRequest(task *schema.Task) *http.Request {
 	pbBytes, _ := proto.Marshal(pbTask)
 
 	httpRequest := httptest.NewRequest("POST", "/", buildPushRequestBody(pbBytes))
-	httpRequest.URL = &url.URL{Host: distribFuncHost}
-	httpRequest.RequestURI = urlProtocolPrefix + distribFuncHost
-	httpRequest.Header.Add("X-Forwarded-Host", distribFuncHost)
+	httpRequest.Host = distribFuncHost
 
 	// And we are done
 	return httpRequest

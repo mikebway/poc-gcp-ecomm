@@ -124,7 +124,7 @@ func doTaskDistributor(_ context.Context, reader io.Reader) (int, error) {
 	}
 
 	// Figure out which cloud function matches this task
-	zap.L().Error("matching task to handler", zap.String("taskId", task.Id),
+	zap.L().Info("matching task to handler", zap.String("taskId", task.Id),
 		zap.String("product", task.ProductCode),
 		zap.String("task", task.TaskCode), zap.String("status", pb.TaskStatus_name[int32(task.Status)]))
 	taskHandlerUrl := functionURL(task)
@@ -135,7 +135,7 @@ func doTaskDistributor(_ context.Context, reader io.Reader) (int, error) {
 	}
 
 	// Everything is good
-	zap.L().Error("handled", zap.String("taskId", task.Id))
+	zap.L().Info("handled", zap.String("taskId", task.Id))
 	return http.StatusOK, nil
 }
 
@@ -160,16 +160,10 @@ func unmarshalTask(message []byte) (*pb.Task, error) {
 // functions we are going to call.
 func determineUrlRoot(r *http.Request) {
 
-	// For now, just log some of the request values that we might be able to use to obtain what we need
-	zap.L().Info("request values",
-		zap.String("host", r.Host),
-		zap.String("url", r.URL.String()),
-		zap.String("requestURI", r.RequestURI),
-		zap.String("X-Forwarded-Host", r.Header.Get("X-Forwarded-Host")))
-
-	// Looks like the X-Forwarded-Host is our best bet for determining the URL of the current function,
-	// and then deriving the common domain suffix for all functions in the same GCP project from that
-	functionUrlSuffix = strings.TrimPrefix(r.Header.Get("X-Forwarded-Host"), thisFunctionName)
+	// From experimentation, it seems that r.Host does (as you might expect) contain the DNS name for
+	// this Cloud Function. We can strip out function name from that to leave us with the common root
+	// for all Cloud Function DNS names within the same GCP project.
+	functionUrlSuffix = strings.TrimPrefix(r.Host, thisFunctionName)
 }
 
 // addTaskMapping adds a single task to Cloud Function mapping to the taskMap.
