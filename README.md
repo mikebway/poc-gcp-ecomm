@@ -7,7 +7,9 @@
 -
 - This project is incomplete and may never be completed!!   
 -
-- Currently working on the Fullfilment Task Distribution cloud functions
+- Currently working on:
+-    * Firestore index defintions
+-    * System testing of Order & Fulfillment services
 ```
 
 This is a proof of concept (POC) project used to experiment with and demonstrate implementing:
