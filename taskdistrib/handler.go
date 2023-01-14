@@ -45,11 +45,6 @@ var (
 	// This means, for example, that a single map entry for COMPLETED status can trigger the invocation of a
 	// common Cloud Function to wake up dependent tasks that have been waiting on completion of other tasks.
 	taskMap map[string]*string
-
-	// functionUrlSuffix is the root portion of the Google Cloud Functions that reside in the same GCP project
-	// as this function. It is appended as a suffix to the name of a cloud function to form the URL of that
-	// function along with its HTTPS protocol prefix.
-	functionUrlSuffix string
 )
 
 // pushRequest represents the payload of a Pub/Sub push message.
@@ -81,10 +76,10 @@ func TaskDistributor(w http.ResponseWriter, r *http.Request) {
 
 	// Use our own function URL to determine the common root domain name of all
 	// Cloud functions running in this GCP project
-	determineUrlRoot(r)
+	urlRoot := determineUrlRoot(r)
 
 	// Have our big brother sibling do all the real work while we just handle the HTTP interfacing here
-	status, err := doTaskDistributor(r.Context(), r.Body)
+	status, err := doTaskDistributor(r.Context(), r.Body, urlRoot)
 	if err != nil {
 
 		// Dang - log the error and return it to the caller as well
@@ -103,7 +98,7 @@ func TaskDistributor(w http.ResponseWriter, r *http.Request) {
 // an error is also returned.
 //
 // See https://cloud.google.com/pubsub/docs/push for documentation of the reader JSON content.
-func doTaskDistributor(_ context.Context, reader io.Reader) (int, error) {
+func doTaskDistributor(_ context.Context, reader io.Reader, urlRoot string) (int, error) {
 
 	// Unpack the JSON push request message from the request body
 	var pushReq pushRequest
@@ -127,7 +122,7 @@ func doTaskDistributor(_ context.Context, reader io.Reader) (int, error) {
 	zap.L().Info("matching task to handler", zap.String("taskId", task.Id),
 		zap.String("product", task.ProductCode),
 		zap.String("task", task.TaskCode), zap.String("status", pb.TaskStatus_name[int32(task.Status)]))
-	taskHandlerUrl := functionURL(task)
+	taskHandlerUrl := functionURL(urlRoot, task)
 	if taskHandlerUrl != nil {
 		zap.L().Info("invoking task handler", zap.String("url", *taskHandlerUrl))
 	} else {
@@ -156,14 +151,14 @@ func unmarshalTask(message []byte) (*pb.Task, error) {
 }
 
 // determineUrlRoot will extract the common domain name suffix for all Cloud Functions in the
-// same GCP project as this one and set that aside as the basis for forming the URLs of the
+// same GCP project as this one and return it to serve as the basis for forming the URLs of the
 // functions we are going to call.
-func determineUrlRoot(r *http.Request) {
+func determineUrlRoot(r *http.Request) string {
 
-	// From experimentation, it seems that r.Host does (as you might expect) contain the DNS name for
+	// From experimentation, it seems that r.Host does (as you might expect) contains the DNS name for
 	// this Cloud Function. We can strip out function name from that to leave us with the common root
 	// for all Cloud Function DNS names within the same GCP project.
-	functionUrlSuffix = strings.TrimPrefix(r.Host, thisFunctionName)
+	return strings.TrimPrefix(r.Host, thisFunctionName)
 }
 
 // addTaskMapping adds a single task to Cloud Function mapping to the taskMap.
@@ -171,9 +166,9 @@ func addTaskMapping(productCode, taskCode string, status pb.TaskStatus, taskFunc
 	taskMap[taskKey(productCode, taskCode, status)] = &taskFuncName
 }
 
-// functionURL looks uop a task in the taskMap and return a URL for a corresponding function if there is one,
+// functionURL looks up a task in the taskMap and return a URL for a corresponding function if there is one,
 // otherwise nil.
-func functionURL(task *pb.Task) *string {
+func functionURL(urlRoot string, task *pb.Task) *string {
 
 	// Form a key from all the relevant task values and lookup a function URL for that key
 	funcName := taskMap[fullTaskKey(task)]
@@ -195,7 +190,7 @@ func functionURL(task *pb.Task) *string {
 
 	// Combine the function name with the protocol prefix and shared domain root to
 	// form the full URL of the function, then return that
-	funcUrl := urlProtocolPrefix + *funcName + functionUrlSuffix
+	funcUrl := urlProtocolPrefix + *funcName + urlRoot
 	return &funcUrl
 }
 

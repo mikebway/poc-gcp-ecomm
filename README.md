@@ -44,6 +44,8 @@ pages:
 * [The Order Firestore Trigger Function](ordertrigger/README.md)
 * [The Order To Fulfillment Topic Consumer](ordertofulfill/README.md)
 * [The Fulfillment Task Firestore Trigger Function](tasktrigger/README.md)
+* [The Fulfillment Task Distribution Function](taskdistrib/README.md)
+* [The Fulfillment Task Email Function](taskdistrib/README.md)
 
 #### How To ...
 * [Use BloomRPC to invoke gRPC Cloud Run services](docs/BLOOMRPC.md)

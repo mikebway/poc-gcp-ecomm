@@ -3,8 +3,8 @@ PROJECT_ID := poc-gcp-ecomm
 GCP_REGION := us-central1
 
 # Function configuration
-FUNCTION_NAME := task-distributor
-ENTRY_POINT := TaskDistributor
+FUNCTION_NAME := task-email
+ENTRY_POINT := FulfillTask
 RUNTIME := go119
 
 # Pub/Sub topic name to subscribe to
@@ -28,11 +28,6 @@ build: gomod compile ## Cloud Function builds do nothing locally other than ensu
 deploy: gomod ## Deploy the the trigger Cloud Function
 	gcloud functions deploy $(FUNCTION_NAME) --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
      --entry-point=$(ENTRY_POINT) --trigger-http --allow-unauthenticated --ingress-settings=internal-only
-	-TEMP=`gcloud functions describe ${FUNCTION_NAME} --gen2 --region=${GCP_REGION} --format="value(serviceConfig.uri)"`; \
-	gcloud pubsub subscriptions create ${SUBSCRIPTION_ID} --topic-project=${PROJECT_ID} --topic=${PUBSUB_TOPIC} \
-		--push-endpoint=$$TEMP
-	# Expect an error in the line above - it will always fail if the subscription already exists
-	# TODO: Implement authentication for the TaskDistributor function
 
 
 .PHONY: test

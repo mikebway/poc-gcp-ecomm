@@ -10,6 +10,7 @@ use (
 	ordertrigger
 	pb
 	taskdistrib
+	taskemail
 	tasktrigger
 	testutil
     types
