@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
-	cloudevents "github.com/cloudevents/sdk-go/v2/event"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/golang/protobuf/proto"
 	pb "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
 	"go.uber.org/zap"

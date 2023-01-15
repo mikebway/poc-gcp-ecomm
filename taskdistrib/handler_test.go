@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -86,6 +87,11 @@ func TestTaskDistributorHappyPath(t *testing.T) {
 	httpRequest := buildHttpRequest(buildMockTask())
 	responseRecorder := httptest.NewRecorder()
 
+	// Obtain a mock fulfillment operation server that will return a successful response and set
+	// its URL as the unit test override for functionURL()
+	svr := newCloudEventServer(nil)
+	unitTestOverrideUrl = svr.URL
+
 	// Wrap a call to the target function so that we can capture its log output
 	logged := testutil.CaptureLogging(func() {
 		TaskDistributor(responseRecorder, httpRequest)
@@ -95,7 +101,7 @@ func TestTaskDistributorHappyPath(t *testing.T) {
 	req.Equal(http.StatusOK, responseRecorder.Code, "should have a 200 OK response code")
 	req.Contains(logged, "matching task to handler", "should have seen the expected information message in the logs")
 	req.Contains(logged, "\"taskId\": \""+taskId+"\"", "should have seen the expected task ID in the logs")
-	req.Contains(logged, "invoking task handler", "should have seen the expected invocation message in the logs")
+	req.Contains(logged, "matched task to handler", "should have seen the expected url match message in the logs")
 	req.Contains(logged, "\"url\": \""+urlProtocolPrefix+goldYoyoManufactureDomain+"\"", "should have seen the fulfillment task URL in the logs")
 	req.Contains(logged, "handled", "should have seen the expected completion message in the logs")
 }
@@ -120,6 +126,11 @@ func TestAllProductsMatch(t *testing.T) {
 	httpRequest := buildHttpRequest(task)
 	responseRecorder := httptest.NewRecorder()
 
+	// Obtain a mock fulfillment operation server that will return a successful response and set
+	// its URL as the unit test override for functionURL()
+	svr := newCloudEventServer(nil)
+	unitTestOverrideUrl = svr.URL
+
 	// Wrap a call to the target function so that we can capture its log output
 	logged := testutil.CaptureLogging(func() {
 		TaskDistributor(responseRecorder, httpRequest)
@@ -129,7 +140,7 @@ func TestAllProductsMatch(t *testing.T) {
 	req.Equal(http.StatusOK, responseRecorder.Code, "should have a 200 OK response code")
 	req.Contains(logged, "matching task to handler", "should have seen the expected information message in the logs")
 	req.Contains(logged, "\"taskId\": \""+taskId+"\"", "should have seen the expected task ID in the logs")
-	req.Contains(logged, "invoking task handler", "should have seen the expected invocation message in the logs")
+	req.Contains(logged, "matched task to handler", "should have seen the expected url match message in the logs")
 	req.Contains(logged, "\"url\": \""+urlProtocolPrefix+salesforceCaseDomain+"\"", "should have seen the fulfillment task URL in the logs")
 	req.Contains(logged, "handled", "should have seen the expected completion message in the logs")
 }
@@ -150,6 +161,11 @@ func TestStatusOnlyMatch(t *testing.T) {
 	task.TaskCode = "ship"
 	task.Status = schema.WAITING_SERVICE
 
+	// Obtain a mock fulfillment operation server that will return a successful response and set
+	// its URL as the unit test override for functionURL()
+	svr := newCloudEventServer(nil)
+	unitTestOverrideUrl = svr.URL
+
 	// Assemble a mock HTTP request and a means to record the response
 	httpRequest := buildHttpRequest(task)
 	responseRecorder := httptest.NewRecorder()
@@ -163,7 +179,7 @@ func TestStatusOnlyMatch(t *testing.T) {
 	req.Equal(http.StatusOK, responseRecorder.Code, "should have a 200 OK response code")
 	req.Contains(logged, "matching task to handler", "should have seen the expected information message in the logs")
 	req.Contains(logged, "\"taskId\": \""+taskId+"\"", "should have seen the expected task ID in the logs")
-	req.Contains(logged, "invoking task handler", "should have seen the expected invocation message in the logs")
+	req.Contains(logged, "matched task to handler", "should have seen the expected url match message in the logs")
 	req.Contains(logged, "\"url\": \""+urlProtocolPrefix+shipDomain+"\"", "should have seen the fulfillment task URL in the logs")
 	req.Contains(logged, "handled", "should have seen the expected completion message in the logs")
 }
@@ -195,6 +211,171 @@ func TestNoMatch(t *testing.T) {
 	req.Contains(logged, "\"taskId\": \""+taskId+"\"", "should have seen the expected task ID in the logs")
 	req.Contains(logged, "no task handler match", "should have seen the expected nothing to do message in the logs")
 	req.Contains(logged, "handled", "should have seen the expected completion message in the logs")
+}
+
+// TestCorruptTask exercises the main handler function with duff task data that should fail to be
+// unmarshalled.
+func TestCorruptTask(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Assemble a mock HTTP request with bad data and a means to record the response
+	httpRequest := httptest.NewRequest("POST", "/", buildPushRequestBody([]byte("this is not a valid task")))
+	httpRequest.Host = distribFuncHost
+	responseRecorder := httptest.NewRecorder()
+
+	// Obtain a mock fulfillment operation server that will return a successful response and set
+	// its URL as the unit test override for functionURL()
+	svr := newCloudEventServer(nil)
+	unitTestOverrideUrl = svr.URL
+
+	// Wrap a call to the target function so that we can capture its log output
+	logged := testutil.CaptureLogging(func() {
+		TaskDistributor(responseRecorder, httpRequest)
+	})
+
+	// Confirm the result was a happy one
+	req.Equal(http.StatusBadRequest, responseRecorder.Code, "should have a 400 Bad Request response code")
+	req.Contains(logged, "failed to execute task function", "should have seen the expected failure message in the logs")
+	req.Contains(logged, "failed to unmarshal task protobuf message", "should have seen the expected protobuf error message in the logs")
+}
+
+// TestCorruptPush exercises the main handler function with a duff Pub/Sub push JSON envelope
+func TestCorruptPush(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Assemble a mock HTTP request with bad data and a means to record the response
+	httpRequest := httptest.NewRequest("POST", "/", bytes.NewReader([]byte("this is not JSON")))
+	httpRequest.Host = distribFuncHost
+	responseRecorder := httptest.NewRecorder()
+
+	// Obtain a mock fulfillment operation server that will return a successful response and set
+	// its URL as the unit test override for functionURL()
+	svr := newCloudEventServer(nil)
+	unitTestOverrideUrl = svr.URL
+
+	// Wrap a call to the target function so that we can capture its log output
+	logged := testutil.CaptureLogging(func() {
+		TaskDistributor(responseRecorder, httpRequest)
+	})
+
+	// Confirm the result was a happy one
+	req.Equal(http.StatusBadRequest, responseRecorder.Code, "should have a 400 Bad Request response code")
+	req.Contains(logged, "failed to execute task function", "should have seen the expected failure message in the logs")
+	req.Contains(logged, "could not decode push request json body", "should have seen the expected JSON error message in the logs")
+}
+
+// TestInvalidBase64 data exercises the main handler function with invalid base64 encoding of a task.
+func TestInvalidBase64(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Assemble a mock HTTP request with bad data and a means to record the response
+	pushReq := &pushRequest{
+		Message: pubsubapi.PubsubMessage{
+			Data: "-- not base64 data --",
+		},
+	}
+	jsonBytes, _ := json.Marshal(pushReq)
+	httpRequest := httptest.NewRequest("POST", "/", bytes.NewReader(jsonBytes))
+	httpRequest.Host = distribFuncHost
+	responseRecorder := httptest.NewRecorder()
+
+	// Obtain a mock fulfillment operation server that will return a successful response and set
+	// its URL as the unit test override for functionURL()
+	svr := newCloudEventServer(nil)
+	unitTestOverrideUrl = svr.URL
+
+	// Wrap a call to the target function so that we can capture its log output
+	logged := testutil.CaptureLogging(func() {
+		TaskDistributor(responseRecorder, httpRequest)
+	})
+
+	// Confirm the result was a happy one
+	req.Equal(http.StatusBadRequest, responseRecorder.Code, "should have a 400 Bad Request response code")
+	req.Contains(logged, "failed to execute task function", "should have seen the expected failure message in the logs")
+	req.Contains(logged, "unable to decode base64 data", "should have seen the expected base64 error message in the logs")
+}
+
+// TestTaskFunctionFailure exercises the main handler function with good data that should be processed
+// without error but where the invoked Cloud Function fails.
+func TestTaskFunctionFailure(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Assemble a mock HTTP request and a means to record the response
+	httpRequest := buildHttpRequest(buildMockTask())
+	responseRecorder := httptest.NewRecorder()
+
+	// Obtain a mock fulfillment operation server that will return a failure response and set
+	// its URL as the unit test override for functionURL()
+	const functionErrMsg = "sorry, we are out of tea"
+	svr := newCloudEventServer(errors.New(functionErrMsg))
+	unitTestOverrideUrl = svr.URL
+
+	// Wrap a call to the target function so that we can capture its log output
+	logged := testutil.CaptureLogging(func() {
+		TaskDistributor(responseRecorder, httpRequest)
+	})
+
+	// Confirm the result was a happy one
+	req.Equal(http.StatusInternalServerError, responseRecorder.Code, "should have a 200 OK response code")
+	req.Contains(logged, "matching task to handler", "should have seen the expected information message in the logs")
+	req.Contains(logged, "\"taskId\": \""+taskId+"\"", "should have seen the expected task ID in the logs")
+	req.Contains(logged, "matched task to handler", "should have seen the expected url match message in the logs")
+	req.Contains(logged, "\"url\": \""+urlProtocolPrefix+goldYoyoManufactureDomain+"\"", "should have seen the fulfillment task URL in the logs")
+	req.Contains(logged, "failed to execute task function", "should have seen the expected execution failure message in the logs")
+	req.Contains(logged, "fulfillment function failed", "should have seen the expected failed function message in the logs")
+	req.Contains(logged, functionErrMsg, "should have seen the expected function error response message in the logs")
+	req.NotContains(logged, "handled", "should not have seen the successful completion message in the logs")
+}
+
+// TestTaskUndeliveredFailure exercises the main handler function with good data that should be processed
+// without error but where the invoked Cloud Function cannot be invoked / does not exist.
+func TestTaskUndeliveredFailure(t *testing.T) {
+
+	// Avoid having to pass t in to every assertion
+	req := require.New(t)
+
+	// Assemble a mock HTTP request and a means to record the response
+	httpRequest := buildHttpRequest(buildMockTask())
+	responseRecorder := httptest.NewRecorder()
+
+	// Have the task distributor try to invoke a Cloud Function that does not respond at all
+	unitTestOverrideUrl = "https://this-is-not-a-valid-domain.nosuch.domain"
+
+	// Wrap a call to the target function so that we can capture its log output
+	logged := testutil.CaptureLogging(func() {
+		TaskDistributor(responseRecorder, httpRequest)
+	})
+
+	// Confirm the result was a happy one
+	req.Equal(http.StatusInternalServerError, responseRecorder.Code, "should have a 200 OK response code")
+	req.Contains(logged, "matching task to handler", "should have seen the expected information message in the logs")
+	req.Contains(logged, "\"taskId\": \""+taskId+"\"", "should have seen the expected task ID in the logs")
+	req.Contains(logged, "matched task to handler", "should have seen the expected url match message in the logs")
+	req.Contains(logged, "\"url\": \""+urlProtocolPrefix+goldYoyoManufactureDomain+"\"", "should have seen the fulfillment task URL in the logs")
+	req.Contains(logged, "failed to execute task function", "should have seen the expected execution failure message in the logs")
+	req.Contains(logged, "fulfillment function failed", "should have seen the expected failed function message in the logs")
+	req.Contains(logged, "no such host", "should have seen the expected undeliverable 'no such host' message in the logs")
+	req.NotContains(logged, "handled", "should not have seen the successful completion message in the logs")
+}
+
+// newCloudEventServer returns an httptest.Server configured to respond to requests with the given error or nil
+// where nil would return a 200 OK response.
+func newCloudEventServer(err error) *httptest.Server {
+
+	// Return a mock HTTP service that will do what we ask
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusTeapot)
+		}
+	}))
 }
 
 // buildHttpRequest assembles a mock http.Request POSTing the given task to the TaskDistributor function.

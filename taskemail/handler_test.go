@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	cloudevents "github.com/cloudevents/sdk-go/v2/event"
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/golang/protobuf/proto"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
 	pb "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
@@ -141,7 +141,7 @@ func buildEvent() *cloudevents.Event {
 	pbBytes, _ := proto.Marshal(task)
 
 	// Create a CloudEvents structure and populate that with our data
-	e := cloudevents.New()
+	e := cloudevents.NewEvent()
 	e.SetID(eventId)
 	e.SetSource(eventSource)
 	e.SetType(eventType)

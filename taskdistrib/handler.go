@@ -9,11 +9,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	cehttp "github.com/cloudevents/sdk-go/v2/protocol/http"
 	"github.com/golang/protobuf/proto"
+	"github.com/google/uuid"
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
 	pb "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
 	"go.uber.org/zap"
@@ -25,6 +29,10 @@ const (
 	// the "task-distributor" portion of "https://task-distributor-azbqye5oka-uc.a.run.app"
 	// where the "azbqye5oka" is unique to the GCP project hosting the function and its siblings.
 	thisFunctionName = "task-distributor"
+
+	// cloudEventType is the type that we set in the CloudEvent envelope that we send to fulfillment
+	// operation Cloud Functions.
+	cloudEventType = "fulfillment-op"
 
 	// urlProtocolPrefix is the HTTPS prefix we expect to see at the front of all cloud function URLs
 	urlProtocolPrefix = "https://"
@@ -44,7 +52,16 @@ var (
 	//
 	// This means, for example, that a single map entry for COMPLETED status can trigger the invocation of a
 	// common Cloud Function to wake up dependent tasks that have been waiting on completion of other tasks.
-	taskMap map[string]*string
+	taskMap map[string]string
+
+	// unitTestOverrideUrl will be set to the URL of a mock HTTP server if we are running unit tests.
+	// This URL should be returned by functionURL() if it is not nil and the task being evaluated does
+	// match an entry in the taskMap.
+	unitTestOverrideUrl string
+
+	// cloudEventsClient is exactly what it says its is - our client for submitting tasks as CloudEvents
+	// to fulfillment operation Cloud Functions.
+	cloudEventsClient cloudevents.Client
 )
 
 // pushRequest represents the payload of a Pub/Sub push message.
@@ -61,11 +78,18 @@ func init() {
 
 	// Cheat and hard code the task to Cloud Function ID map here
 	// TODO: load this map from a configuration stored in Firestore
-	taskMap = make(map[string]*string)
+	taskMap = make(map[string]string)
 	addTaskMapping("gold_yoyo", "manufacture", schema.WAITING_SERVICE, "task-gy-man")
 	addTaskMapping("plastic_yoyo", "upsell_to_gold", schema.WAITING_CS, "task-py-up")
 	addTaskMapping("", "sf_case", schema.WAITING_CS, "task-sf")
 	addTaskMapping("", "ship", schema.WAITING_SERVICE, "task-ship")
+
+	// Establish our CloudEvents submission client
+	var err error
+	cloudEventsClient, err = cloudevents.NewClientHTTP()
+	if err != nil {
+		log.Fatalf("failed to create CloudEvents client, %v", err)
+	}
 }
 
 // TaskDistributor is the Cloud Function entry point. The payload of the Pub/Sub push request is a task
@@ -98,7 +122,10 @@ func TaskDistributor(w http.ResponseWriter, r *http.Request) {
 // an error is also returned.
 //
 // See https://cloud.google.com/pubsub/docs/push for documentation of the reader JSON content.
-func doTaskDistributor(_ context.Context, reader io.Reader, urlRoot string) (int, error) {
+func doTaskDistributor(ctx context.Context, reader io.Reader, urlRoot string) (int, error) {
+
+	// Obtain our logger once for multiple uses in this function
+	logger := zap.L()
 
 	// Unpack the JSON push request message from the request body
 	var pushReq pushRequest
@@ -119,18 +146,24 @@ func doTaskDistributor(_ context.Context, reader io.Reader, urlRoot string) (int
 	}
 
 	// Figure out which cloud function matches this task
-	zap.L().Info("matching task to handler", zap.String("taskId", task.Id),
+	logger.Info("matching task to handler", zap.String("taskId", task.Id),
 		zap.String("product", task.ProductCode),
 		zap.String("task", task.TaskCode), zap.String("status", pb.TaskStatus_name[int32(task.Status)]))
-	taskHandlerUrl := functionURL(urlRoot, task)
-	if taskHandlerUrl != nil {
-		zap.L().Info("invoking task handler", zap.String("url", *taskHandlerUrl))
+	fulfillOpHandlerUrl := functionURL(urlRoot, task)
+	if len(fulfillOpHandlerUrl) != 0 {
+
+		// We have a fulfillment operation match - pass the task to the designated Cloud Function as a CloudEvent
+		err = dispatchCloudEvent(ctx, fulfillOpHandlerUrl, pbBytes)
+		if err != nil {
+			return http.StatusInternalServerError, fmt.Errorf("fulfillment function failed: %w", err)
+		}
+
 	} else {
-		zap.L().Info("no task handler match")
+		logger.Info("no task handler match")
 	}
 
 	// Everything is good
-	zap.L().Info("handled", zap.String("taskId", task.Id))
+	logger.Info("handled", zap.String("taskId", task.Id))
 	return http.StatusOK, nil
 }
 
@@ -161,37 +194,82 @@ func determineUrlRoot(r *http.Request) string {
 	return strings.TrimPrefix(r.Host, thisFunctionName)
 }
 
-// addTaskMapping adds a single task to Cloud Function mapping to the taskMap.
-func addTaskMapping(productCode, taskCode string, status pb.TaskStatus, taskFuncName string) {
-	taskMap[taskKey(productCode, taskCode, status)] = &taskFuncName
+// dispatchCloudEvent sends the given data bytes to the target URL as a CloudEvent.
+//
+// See https://github.com/cloudevents/sdk-go and https://cloudevents.io/
+func dispatchCloudEvent(ctx context.Context, targetUrl string, data []byte) error {
+
+	// Create a CloudEvents structure and populate that with our data
+	//
+	// NOTE: the CloudEvents client will set a unique ID and timestamp for us
+	eventId := uuid.NewString()
+	event := cloudevents.NewEvent()
+	event.SetSource(thisFunctionName)
+	event.SetType(cloudEventType)
+	_ = event.SetData(cloudevents.Base64, data)
+
+	// Establish the target URL context
+	// Set a target.
+	ctx = cloudevents.ContextWithTarget(ctx, targetUrl)
+
+	// Send the event
+	zap.L().Info("dispatching fulfillment operation event", zap.String("id", eventId))
+	result := cloudEventsClient.Send(ctx, event)
+
+	// Most of the time the result is an HTTP result, so we cast it to that and look to see if
+	// the status code indicates any problems on the Clod Function side.
+	httpResult, ok := result.(*cehttp.Result)
+	if ok {
+		// If the status code is anything that indicates the Cloud Function service call failed
+		// return the result as an error
+		if httpResult.StatusCode >= 300 {
+			return error(result)
+		}
+	} else {
+		// Handle the corner case where cloudevents.Client.Send did not return an HTTP result.
+		// This happens if DNS lookup fails or the connection is refused etc., i.e. when the
+		// error occurs at a lower layer of the TCP stack before HTTPS actually gets involved.
+		return error(result)
+	}
+
+	// All is well
+	return nil
 }
 
 // functionURL looks up a task in the taskMap and return a URL for a corresponding function if there is one,
 // otherwise nil.
-func functionURL(urlRoot string, task *pb.Task) *string {
+func functionURL(urlRoot string, task *pb.Task) string {
 
 	// Form a key from all the relevant task values and lookup a function URL for that key
 	funcName := taskMap[fullTaskKey(task)]
-	if funcName == nil {
+	if len(funcName) == 0 {
 
 		// We found nothing, try matching on just the task type and status
 		funcName = taskMap[allProductsTaskKey(task)]
-		if funcName == nil {
+		if len(funcName) == 0 {
 
 			// We still found nothing, try matching on just the task status
 			funcName = taskMap[statusOnlyTaskKey(task)]
-			if funcName == nil {
+			if len(funcName) == 0 {
 
 				// There is nothing to find, give up
-				return nil
+				return ""
 			}
 		}
 	}
 
 	// Combine the function name with the protocol prefix and shared domain root to
 	// form the full URL of the function, then return that
-	funcUrl := urlProtocolPrefix + *funcName + urlRoot
-	return &funcUrl
+	funcUrl := urlProtocolPrefix + funcName + urlRoot
+
+	// Log the URL match that we came up with then see if there is a unit test override
+	zap.L().Info("matched task to handler", zap.String("url", funcUrl))
+	if len(unitTestOverrideUrl) != 0 {
+		funcUrl = unitTestOverrideUrl
+	}
+
+	// We got what we got - return it
+	return funcUrl
 }
 
 // fullTaskKey forms a taskMap key from all the possibly relevant values of the given task.
@@ -209,6 +287,11 @@ func allProductsTaskKey(task *pb.Task) string {
 // matching regardless of product type and task type.
 func statusOnlyTaskKey(task *pb.Task) string {
 	return taskKey("", "", task.Status)
+}
+
+// addTaskMapping adds a single task to Cloud Function mapping to the taskMap.
+func addTaskMapping(productCode, taskCode string, status pb.TaskStatus, taskFuncName string) {
+	taskMap[taskKey(productCode, taskCode, status)] = taskFuncName
 }
 
 // taskKey assembles the given values into a taskMao key.

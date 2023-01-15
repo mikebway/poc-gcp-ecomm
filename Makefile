@@ -30,6 +30,7 @@ test: protobuf ## Compile code and run unit tests locally on all components that
 	$(MAKE) -C orderfromcart test
 	$(MAKE) -C ordertrigger test
 	$(MAKE) -C taskdistrib test
+	$(MAKE) -C taskemail test
 	$(MAKE) -C tasktrigger test
 	$(MAKE) -C types test
 
@@ -43,6 +44,7 @@ build: protobuf ## Build all the project components (invoking gcloud build)
 	$(MAKE) -C orderfromcart build
 	$(MAKE) -C ordertrigger build
 	$(MAKE) -C taskdistrib build
+	$(MAKE) -C taskemail build
 	$(MAKE) -C tasktrigger build
 
 .PHONY: deploy
@@ -55,6 +57,7 @@ deploy: ## Deploy all project components to Google Cloud (you MUST build first)
 	$(MAKE) -C orderfromcart deploy
 	$(MAKE) -C ordertrigger deploy
 	$(MAKE) -C taskdistrib deploy
+	$(MAKE) -C taskemail deploy
 	$(MAKE) -C tasktrigger build
 
 .PHONY: firestore
