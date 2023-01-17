@@ -9,8 +9,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
+	nethttp "net/http"
 	"strconv"
 	"strings"
 
@@ -21,6 +21,7 @@ import (
 	"github.com/mikebway/poc-gcp-ecomm/fulfillment/schema"
 	pb "github.com/mikebway/poc-gcp-ecomm/pb/fulfillment"
 	"go.uber.org/zap"
+	"google.golang.org/api/idtoken"
 	"google.golang.org/api/pubsub/v1"
 )
 
@@ -59,9 +60,10 @@ var (
 	// match an entry in the taskMap.
 	unitTestOverrideUrl string
 
-	// cloudEventsClient is exactly what it says its is - our client for submitting tasks as CloudEvents
-	// to fulfillment operation Cloud Functions.
-	cloudEventsClient cloudevents.Client
+	// lazyLoadCEClient is our CloudEvents client. It is lazy loaded the first time it is needed rather than
+	// being established in the init() function. Lazy loading allows our unit tests can override how it gets
+	// authorized, otherwise the service account authorization would fail and crash the unit test code.
+	lazyLoadCEClient cloudevents.Client
 )
 
 // pushRequest represents the payload of a Pub/Sub push message.
@@ -83,13 +85,6 @@ func init() {
 	addTaskMapping("plastic_yoyo", "upsell_to_gold", schema.WAITING_CS, "task-py-up")
 	addTaskMapping("", "sf_case", schema.WAITING_CS, "task-sf")
 	addTaskMapping("", "ship", schema.WAITING_SERVICE, "task-ship")
-
-	// Establish our CloudEvents submission client
-	var err error
-	cloudEventsClient, err = cloudevents.NewClientHTTP()
-	if err != nil {
-		log.Fatalf("failed to create CloudEvents client, %v", err)
-	}
 }
 
 // TaskDistributor is the Cloud Function entry point. The payload of the Pub/Sub push request is a task
@@ -209,12 +204,17 @@ func dispatchCloudEvent(ctx context.Context, targetUrl string, data []byte) erro
 	_ = event.SetData(cloudevents.Base64, data)
 
 	// Establish the target URL context
-	// Set a target.
 	ctx = cloudevents.ContextWithTarget(ctx, targetUrl)
+
+	// Obtain a CloudEvents client that is authorized to access the target URL
+	ceClient, err := getAuthorizedCEClient(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to obtain authorized CloudEvents client: %w", err)
+	}
 
 	// Send the event
 	zap.L().Info("dispatching fulfillment operation event", zap.String("id", eventId))
-	result := cloudEventsClient.Send(ctx, event)
+	result := ceClient.Send(ctx, event)
 
 	// Most of the time the result is an HTTP result, so we cast it to that and look to see if
 	// the status code indicates any problems on the Clod Function side.
@@ -234,6 +234,43 @@ func dispatchCloudEvent(ctx context.Context, targetUrl string, data []byte) erro
 
 	// All is well
 	return nil
+}
+
+// getAuthorizedCEClient returns a CloudEvents client configured with oauth.TokenSource authentication / authorization.
+//
+// See https://cloud.google.com/run/docs/authenticating/service-to-service#run-service-to-service-example-go
+func getAuthorizedCEClient(ctx context.Context) (cloudevents.Client, error) {
+
+	// If we already have the client established, just return that
+	if lazyLoadCEClient != nil {
+		return lazyLoadCEClient, nil
+	}
+
+	// Establish a regular http.Client that automatically adds an "Authorization" header
+	// to any requests made.
+	httpClient, err := idtoken.NewClient(ctx, thisFunctionName)
+	if err != nil {
+		return nil, fmt.Errorf("idtoken.NewClient failed: %v", err)
+	}
+
+	// Establish our CloudEvents submission client, wrapping our authorized http.Client
+	lazyLoadCEClient, err = cloudevents.NewClientHTTP(WithHttpClient(httpClient))
+	if err != nil {
+		return nil, fmt.Errorf("cloudevents.NewClientHTTP failed: %v", err)
+	}
+	zap.L().Info("established CloudEvents client")
+
+	// We are all good and happy
+	return lazyLoadCEClient, nil
+}
+
+// WithHttpClient defines an http.Option that sets the given http.Client into a CloudEvents HTTP protocol handler
+// allowing the caller to provide a client with OAuth token authorization configure.
+func WithHttpClient(httpClient *nethttp.Client) cehttp.Option {
+	return func(p *cehttp.Protocol) error {
+		p.Client = httpClient
+		return nil
+	}
 }
 
 // functionURL looks up a task in the taskMap and return a URL for a corresponding function if there is one,

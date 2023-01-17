@@ -3,7 +3,6 @@ PROJECT_ID := poc-gcp-ecomm
 GCP_REGION := us-central1
 
 # Function configuration
-FUNCTION_NAME := task-email
 ENTRY_POINT := FulfillTask
 RUNTIME := go119
 
@@ -25,10 +24,19 @@ help: ## List of available commands
 build: gomod compile ## Cloud Function builds do nothing locally other than ensure that go.mod is up to date and that the code compiles
 
 .PHONY: deploy
-deploy: gomod ## Deploy the the trigger Cloud Function
-	gcloud functions deploy $(FUNCTION_NAME) --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
-     --entry-point=$(ENTRY_POINT) --trigger-http --allow-unauthenticated --ingress-settings=internal-only
-
+deploy: gomod ## Deploy the the email sending Cloud Function multiple times with different names and environment variable settings
+	gcloud functions deploy task-gy-man --set-env-vars FULFILL_OPERATION=manufacture-gold-yoyo \
+     --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
+     --entry-point=$(ENTRY_POINT) --trigger-http --ingress-settings=all
+	gcloud functions deploy task-py-up --set-env-vars FULFILL_OPERATION=upsell-to-gold-yoyo \
+     --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
+     --entry-point=$(ENTRY_POINT) --trigger-http --ingress-settings=all
+	gcloud functions deploy task-sf --set-env-vars FULFILL_OPERATION=salesforce-case \
+     --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
+     --entry-point=$(ENTRY_POINT) --trigger-http --ingress-settings=all
+	gcloud functions deploy task-ship --set-env-vars FULFILL_OPERATION=ship-product \
+     --gen2 --region $(GCP_REGION) --runtime $(RUNTIME) \
+     --entry-point=$(ENTRY_POINT) --trigger-http --ingress-settings=all
 
 .PHONY: test
 test: compile ## Run the unit tests locally

@@ -53,6 +53,9 @@ func fulfillTask(_ context.Context, e cloudevents.Event) error {
 	zap.L().Info("fulfilled", zap.String("taskId", task.Id), zap.String("product", task.ProductCode),
 		zap.String("task", task.TaskCode), zap.Int32("status", int32(task.Status)))
 
+	// TODO: If email address environment variable is set, use SendGrid to send email to that address
+	// TODO: If task defines an email address, send email to that address
+
 	// All done, no problems
 	return nil
 }

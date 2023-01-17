@@ -33,6 +33,7 @@ deploy: gomod ## Deploy the the trigger Cloud Function
 		--push-endpoint=$$TEMP
 	# Expect an error in the line above - it will always fail if the subscription already exists
 	# TODO: Implement authentication for the TaskDistributor function
+	# TODO: TaskDistributor function needs service account with Cloud Functions Invoker role
 
 
 .PHONY: test

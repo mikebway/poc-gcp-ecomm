@@ -50,6 +50,7 @@ pages:
 #### How To ...
 * [Use BloomRPC to invoke gRPC Cloud Run services](docs/BLOOMRPC.md)
 * [Grant service account access for Cloud Run services](docs/DATASTORE_ACCESS.md)
+* [Allow Cloud Functions to Invoke Cloud Functions](docs/CF_INVOKE_CF.md)
 * [Grant Cloud Build access to private Git repos](docs/PRIVATEREPOS.md)
 * [Build leaner Go service containers](docs/LEAN.md)
 

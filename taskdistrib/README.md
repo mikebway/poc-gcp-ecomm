@@ -14,3 +14,12 @@ AWS EventBridge.
 In a real world implementation, the mapping of task type and status to task execution function 
 would be soft configured and loaded when **Fulfillment Task Distribution Function** was instantiated, perhaps
 checked every 15 minutes, but for this POC the mapping is hard coded in the [`handler.go` source file](./handler.go).
+
+## Unit Testing
+
+Since the Task Distribution function  includes code to obtain a OAuth token, and CloudEvents requires that this token 
+must be either for a service account or a service account impersonator, a couple of hoops have to be jumped in order 
+for unit tests to be run successfully.
+
+See [Allow Cloud Functions to Invoke Cloud Functions](../docs/CF_INVOKE_CF.md) for instructions on how to set this up.
+
