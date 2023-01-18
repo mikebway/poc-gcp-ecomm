@@ -59,11 +59,6 @@ var (
 	// This URL should be returned by functionURL() if it is not nil and the task being evaluated does
 	// match an entry in the taskMap.
 	unitTestOverrideUrl string
-
-	// lazyLoadCEClient is our CloudEvents client. It is lazy loaded the first time it is needed rather than
-	// being established in the init() function. Lazy loading allows our unit tests can override how it gets
-	// authorized, otherwise the service account authorization would fail and crash the unit test code.
-	lazyLoadCEClient cloudevents.Client
 )
 
 // pushRequest represents the payload of a Pub/Sub push message.
@@ -207,7 +202,7 @@ func dispatchCloudEvent(ctx context.Context, targetUrl string, data []byte) erro
 	ctx = cloudevents.ContextWithTarget(ctx, targetUrl)
 
 	// Obtain a CloudEvents client that is authorized to access the target URL
-	ceClient, err := getAuthorizedCEClient(ctx)
+	ceClient, err := getAuthorizedCEClient(ctx, targetUrl)
 	if err != nil {
 		return fmt.Errorf("failed to obtain authorized CloudEvents client: %w", err)
 	}
@@ -239,29 +234,40 @@ func dispatchCloudEvent(ctx context.Context, targetUrl string, data []byte) erro
 // getAuthorizedCEClient returns a CloudEvents client configured with oauth.TokenSource authentication / authorization.
 //
 // See https://cloud.google.com/run/docs/authenticating/service-to-service#run-service-to-service-example-go
-func getAuthorizedCEClient(ctx context.Context) (cloudevents.Client, error) {
+func getAuthorizedCEClient(ctx context.Context, audience string) (cloudevents.Client, error) {
 
-	// If we already have the client established, just return that
-	if lazyLoadCEClient != nil {
-		return lazyLoadCEClient, nil
-	}
+	// TODO: Make this more efficient by caching and reusing the CloudEvent clients generated.
+	// The problem is that the tokens associated with the clients may expire if the clients are not used
+	// frequently enough. Without direct access to the token structure embedded in the httpClient
+	// we can have no idea whether this might be the case.
+	//
+	// We could watch for 403 errors and recreate the client if one is seen. Or, if we knew the TTL of the
+	// access token we could cache a tuple of the client and the timeout and create a new client if the
+	// timeout was outside a safe margin of the current time.
+	//
+	// We could estimate the expiration time but obtaining another token immediately before creating the
+	// httpClient, as follows:
+	//
+	// source, err := idtoken.NewTokenSource(ctx, audience)
+	// token, err := source.Token()
+	// expires := token.Expiry.Add(-time.Second * 30) // Subtract 30 second safety margin
 
 	// Establish a regular http.Client that automatically adds an "Authorization" header
 	// to any requests made.
-	httpClient, err := idtoken.NewClient(ctx, thisFunctionName)
+	httpClient, err := idtoken.NewClient(ctx, audience)
 	if err != nil {
 		return nil, fmt.Errorf("idtoken.NewClient failed: %v", err)
 	}
 
 	// Establish our CloudEvents submission client, wrapping our authorized http.Client
-	lazyLoadCEClient, err = cloudevents.NewClientHTTP(WithHttpClient(httpClient))
+	cloudEventsClient, err := cloudevents.NewClientHTTP(WithHttpClient(httpClient))
 	if err != nil {
 		return nil, fmt.Errorf("cloudevents.NewClientHTTP failed: %v", err)
 	}
 	zap.L().Info("established CloudEvents client")
 
 	// We are all good and happy
-	return lazyLoadCEClient, nil
+	return cloudEventsClient, nil
 }
 
 // WithHttpClient defines an http.Option that sets the given http.Client into a CloudEvents HTTP protocol handler

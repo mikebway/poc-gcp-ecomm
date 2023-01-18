@@ -16,11 +16,21 @@ variable configurations. For this to be possible, a couple of conditions have to
 2. The target function(s) must grant a role for the service account of the  [Fulfillment Task Distribution Function](taskdistrib/README.md) 
    function to invoke it. For 1st gen functions, the invoker role is Cloud Functions Invoker (roles/cloudfunctions.invoker). 
    For 2nd gen functions, the invoker role is Cloud Run Invoker (roles/run.invoker). 
-   permission `roles/cloudfunctions.invoker`, Cloud Functions Invoker, role.
+   
+   Command to grant access to 2nd gen calling functions:
    ```shell
-   gcloud functions add-iam-policy-binding RECEIVING_FUNCTION \
-      --member='serviceAccount:CALLING_FUNCTION_IDENTITY' \
+   gcloud run services add-iam-policy-binding task-gy-man --region=us-central1 \
+      --member='serviceAccount:[account-number]-compute@developer.gserviceaccount.com' \
       --role='roles/run.invoker'
+   ```
+   Where `--member` is the service account email address for the calling Cloud Function in the form
+   `[account-number]-compute@developer.gserviceaccount.com` prefixed by `serviceAccount:`.
+   
+   Command to grant access to 1st gen calling functions:
+   ```shell
+   gcloud functions add-iam-policy-binding task-gy-man --region=us-central1 \
+      --member='serviceAccount:[account-number]-compute@developer.gserviceaccount.com' \
+      --role='roles/cloudfunctions.invoker'
    ```
 
 For more background see [Cloud Functions: Authenticating for invocation](https://cloud.google.com/functions/docs/securing/authenticating)
@@ -36,8 +46,12 @@ First, create a service account key (for a service account with the right to inv
 as a JSON file on the local machine where the tests are to be run:
 
 ```shell
-gcloud iam service-accounts keys create ~/temp/serviceAccount.json --iam-account=CALLING_FUNCTION_IDENTITY@developer.gserviceaccount.com
+gcloud iam service-accounts keys create ~/temp/serviceAccount.json --iam-account=SERVICE-ACCOUNT-EMAIL-ADDRESS
 ```
+
+The service account that you specify can be anything, even a service account with no access rights whatsoever.
+All that the unit tests require is credentials for something that is a service account or service account impersonator
+since the invocations are all handled by an httptest mock server.
 
 Next, the `GOOGLE_APPLICATION_CREDENTIALS` environment variable must be set to point to that JSON file:
 
