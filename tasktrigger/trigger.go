@@ -93,6 +93,10 @@ func init() {
 // configuration (see Makefile) that will notify the handler of all updates to the root document of a Task.
 func TaskTrigger(ctx context.Context, e FirestoreEvent) error {
 
+	// Flush the logs before exiting each invocation of this Cloud Function
+	//goland:noinspection GoUnhandledErrorResult
+	defer zap.L().Sync()
+
 	// Have our big brother sibling do all the real work while we just handle the trigger interfacing and
 	// error logging here
 	err := doCartTrigger(ctx, e)

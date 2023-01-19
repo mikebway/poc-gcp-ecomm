@@ -6,10 +6,10 @@ require (
 	github.com/cloudevents/sdk-go/v2 v2.13.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
-	github.com/mikebway/poc-gcp-ecomm/fulfillment v0.0.0-20230115122846-ade3ef12feb6
-	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20230115122846-ade3ef12feb6
+	github.com/mikebway/poc-gcp-ecomm/fulfillment v0.0.0-20230118174521-f7ea3b1744fc
+	github.com/mikebway/poc-gcp-ecomm/pb v0.0.0-20230118174521-f7ea3b1744fc
 	github.com/mikebway/poc-gcp-ecomm/testutil v0.0.0-20230106151957-dedb32a889cf
-	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20230115122846-ade3ef12feb6
+	github.com/mikebway/poc-gcp-ecomm/types v0.0.0-20230118174521-f7ea3b1744fc
 	github.com/stretchr/testify v1.8.1
 	go.uber.org/zap v1.24.0
 	google.golang.org/api v0.106.0

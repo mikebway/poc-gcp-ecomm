@@ -88,6 +88,10 @@ func init() {
 // See https://cloud.google.com/pubsub/docs/push for documentation of the request body JSON content.
 func TaskDistributor(w http.ResponseWriter, r *http.Request) {
 
+	// Flush the logs before exiting each invocation of this Cloud Function
+	//goland:noinspection GoUnhandledErrorResult
+	defer zap.L().Sync()
+
 	// Use our own function URL to determine the common root domain name of all
 	// Cloud functions running in this GCP project
 	urlRoot := determineUrlRoot(r)

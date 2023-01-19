@@ -31,6 +31,10 @@ func init() {
 // fulfillTask consumes a CloudEvent message containing a e-commerce fulfillment task description
 func fulfillTask(_ context.Context, e cloudevents.Event) error {
 
+	// Flush the logs before exiting each invocation of this Cloud Function
+	//goland:noinspection GoUnhandledErrorResult
+	defer zap.L().Sync()
+
 	// This code can be deployed to be multiple different mock fulfillment task actions, configured by an environment
 	// variable. Real production code would be more efficient and figure this out in an init() function when
 	// the function is first instantiated, but then we would not be able to unit test it so ... we do it

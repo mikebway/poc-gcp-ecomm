@@ -7,9 +7,10 @@
 -
 - This project is incomplete and may never be completed!!   
 -
-- Currently working on:
--    * Firestore index defintions
--    * System testing of Order & Fulfillment services
+- Currently incomplete:
+-    * Having the `taskemail` Cloud Function actually send an email
+-    * Having fulfillment operations (e.g. `taskemail`) change fulfillment task state 
+-    * A myriad of TODO items sprinkled throughout the project
 ```
 
 This is a proof of concept (POC) project used to experiment with and demonstrate implementing:
@@ -99,6 +100,12 @@ significant locations:
 ├── pb              <-- Go library module generated from the gRPC service and protocol buffer
 │                       message schema. This is referenced by service modules to facilitate
 │                       implementation of the gRPC APIs. 
+│ 
+├── taskdistrib     <-- Source code and Makefile for the task-distributor Pub/Sub push subscription
+│                       Cloud Function.
+│ 
+├── taskemail       <-- Source code and Makefile for a fulfillment task operation Cloud Function
+│                       that may be invoked by the task-distributor function.
 │ 
 ├── tasktrigger     <-- Source code and Makefile for the task-trigger Firestore trigger Cloud
 │                       Function.

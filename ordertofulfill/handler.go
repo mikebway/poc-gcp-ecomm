@@ -57,6 +57,10 @@ type pushRequest struct {
 // See https://cloud.google.com/pubsub/docs/push for documentation of the request body JSON content.
 func OrderToFulfill(w http.ResponseWriter, r *http.Request) {
 
+	// Flush the logs before exiting each invocation of this Cloud Function
+	//goland:noinspection GoUnhandledErrorResult
+	defer zap.L().Sync()
+
 	// Have our big brother sibling do all the real work while we just handle the HTTP interfacing here
 	status, err := doOrderToFulfill(r.Context(), r.Body)
 	if err != nil {
