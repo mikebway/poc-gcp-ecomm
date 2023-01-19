@@ -24,6 +24,10 @@ const (
 // init is the static initializer used to configure our local and global state.
 func init() {
 
+	// Initialize our Zap logger
+	serviceLogger, _ := zap.NewProduction()
+	zap.ReplaceGlobals(serviceLogger)
+
 	// Inform the Cloud Function framework which Go function to invoke when an event is received via HTTPS POST
 	functions.CloudEvent("FulfillTask", fulfillTask)
 }
