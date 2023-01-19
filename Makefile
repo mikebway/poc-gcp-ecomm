@@ -58,7 +58,7 @@ deploy: ## Deploy all project components to Google Cloud (you MUST build first)
 	$(MAKE) -C ordertrigger deploy
 	$(MAKE) -C taskdistrib deploy
 	$(MAKE) -C taskemail deploy
-	$(MAKE) -C tasktrigger build
+	$(MAKE) -C tasktrigger deploy
 
 .PHONY: firestore
 firestore: ## Run the Firestore emulator
