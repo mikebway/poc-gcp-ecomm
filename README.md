@@ -61,7 +61,6 @@ The following directory and file tree does not show every file in the project bu
 significant locations:
 
 ```text
-    └── mikebway <-- gRPC service and protocol buffer schema definitions specific to this project.
 .
 ├── api             <-- gRPC service and protocol buffer message schema definitions.
 │   ├── google      <-- Cloned Google protocol buffer definitions for standard types like phone
